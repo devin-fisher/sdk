@@ -8,6 +8,7 @@ pub mod pool;
 pub mod wallet;
 pub mod init;
 pub mod error;
+pub mod error2;
 pub mod httpclient;
 pub mod callback;
 pub mod crypto;

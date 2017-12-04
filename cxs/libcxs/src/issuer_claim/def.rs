@@ -444,7 +444,7 @@ pub fn issuer_claim_create(schema_seq_no: u32,
     new_issuer_claim.state = CxsStateType::CxsStateInitialized;
 
     info!("inserting handle {} into claim_issuer table", new_handle);
-    ISSUER_CLAIM_MAP.lock().unwrap().insert(new_handle, new_issuer_claim);;
+    ISSUER_CLAIM_MAP.lock().unwrap().insert(new_handle, new_issuer_claim);
 
     Ok(new_handle)
 }

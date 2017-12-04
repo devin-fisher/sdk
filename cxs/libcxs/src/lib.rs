@@ -30,6 +30,7 @@ pub mod connection;
 pub mod issuer_claim;
 pub mod claim_request;
 pub mod proof;
+mod object_cache;
 
 pub fn create_path(s:&str) -> &Path {
     Path::new(s)
