@@ -26,8 +26,8 @@ impl<T> ObjectCache<T> {
         }
     }
 
-    fn get<F>(&self, handle:u32, closure: F) -> Result<u32,u32>
-        where F: Fn(&T) -> Result<u32,u32> {
+    fn get<F,R>(&self, handle:u32, closure: F) -> Result<R,u32>
+        where F: Fn(&T) -> Result<R,u32> {
 
         let map = self.lock_map()?;
         match map.get(&handle) {
@@ -36,8 +36,8 @@ impl<T> ObjectCache<T> {
         }
     }
 
-    fn get_mod<F>(&self, handle:u32, closure: F) -> Result<u32,u32>
-        where F: Fn(&T) -> Result<u32,u32> {
+    fn get_mut<F, R>(&self, handle:u32, closure: F) -> Result<R,u32>
+        where F: Fn(&mut T) -> Result<R,u32> {
 
         let mut map = self.lock_map()?;
 
@@ -48,7 +48,7 @@ impl<T> ObjectCache<T> {
     }
 
     fn add(&self, handle:u32, obj:T) -> CxsResult<u32> {
-        let mut map = self.lock_map().unwrap(); //TODO no unwrap
+        let mut map = self.lock_map()?; //TODO no unwrap
         match map.insert(handle, obj){
             Some(old_obj) => Ok(0),
             None => Ok(Error2::SUCCESS.code_num())
@@ -80,4 +80,34 @@ mod tests{
         let rtn = test.get(234, |obj| Ok(obj.clone()));
         assert_eq!(2222, rtn.unwrap())
     }
+
+
+    #[test]
+    fn sdf_to_string_test() {
+        let test:ObjectCache<u32> = Default::default();
+        let temp = test.add(234, 2222).unwrap();
+        let string: String = test.get(234, |obj|{
+           Ok(String::from("TEST"))
+        }).unwrap();
+
+        assert_eq!("TEST", string);
+
+    }
+
+    fn mut_object_test(){
+        let test:ObjectCache<String> = Default::default();
+        let temp = test.add(234, String::from("TEST")).unwrap();
+
+        test.get_mut(234, |obj|{
+            obj.to_lowercase();
+            Ok(())
+        }).unwrap();
+
+        let string: String = test.get(234, |obj|{
+            Ok(obj.clone())
+        }).unwrap();
+
+        assert_eq!("test", string);
+    }
+
 }
