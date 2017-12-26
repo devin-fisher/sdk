@@ -2,15 +2,17 @@ use std::sync::Mutex;
 use std::sync::MutexGuard;
 use std::collections::HashMap;
 use utils::error2::{CxsResult, Error2};
+use std::ops::Deref;
+use std::ops::DerefMut;
 
 struct ObjectCache<T>{
-    store: Mutex<HashMap<u32, T>>,
+    store: HashMap<u32, Mutex<T>>,
 }
 
 impl<T> Default for ObjectCache<T> {
     fn default() -> ObjectCache<T>
     {
-        let store : Mutex<HashMap<u32, T>> = Default::default();
+        let store : HashMap<u32, Mutex<T>> = Default::default();
         ObjectCache {
             store
         }
@@ -18,46 +20,50 @@ impl<T> Default for ObjectCache<T> {
 }
 
 impl<T> ObjectCache<T> {
-    fn lock_map(&self) -> Result<MutexGuard<HashMap<u32, T>>,u32>
+    fn lock_obj(&self, handle:u32) -> Result<MutexGuard<T>,u32>
     {
-        match self.store.lock() {
-            Ok(map) => Ok(map),
-            Err(err) => return Err(10) //TODO better error
+        match self.store.get(&handle) {
+            Some(m) => match m.lock() {
+                Ok(obj) => Ok(obj),
+                Err(err) => return Err(10) //TODO better error
+            },
+            None => return Err(10) //TODO Handle not found error
+        }
+    }
+
+    fn lock_mut_obj(&mut self, handle:u32) -> Result<MutexGuard<T>,u32>
+    {
+        match self.store.get_mut(&handle) {
+            Some(m) => match m.lock() {
+                Ok(obj) => Ok(obj),
+                Err(err) => return Err(10) //TODO better error
+            },
+            None => return Err(10) //TODO Handle not found error
         }
     }
 
     fn get<F,R>(&self, handle:u32, closure: F) -> Result<R,u32>
         where F: Fn(&T) -> Result<R,u32> {
-
-        let map = self.lock_map()?;
-        match map.get(&handle) {
-            Some(obj) => closure(&obj),
-            None => return Err(10) //TODO better error
-        }
+        let obj = self.lock_obj(handle)?;
+        closure(obj.deref())
     }
 
-    fn get_mut<F, R>(&self, handle:u32, closure: F) -> Result<R,u32>
+    fn get_mut<F, R>(&mut self, handle:u32, closure: F) -> Result<R,u32>
         where F: Fn(&mut T) -> Result<R,u32> {
-
-        let mut map = self.lock_map()?;
-
-        match map.get_mut(&handle) {
-            Some(mut obj) => closure(&mut obj),
-            None => return Err(10) //TODO better error
-        }
+        let mut obj = self.lock_mut_obj(handle)?;
+        closure(obj.deref_mut())
     }
 
-    fn add(&self, handle:u32, obj:T) -> CxsResult<u32> {
-        let mut map = self.lock_map()?; //TODO no unwrap
-        match map.insert(handle, obj){
+    fn add(&mut self, handle:u32, obj:T) -> CxsResult<u32> {
+        match self.store.insert(handle, Mutex::new(obj)){
             Some(old_obj) => Ok(0),
             None => Ok(Error2::SUCCESS.code_num())
         }
     }
 
-    fn release(&self, handle:u32) -> Result<u32,u32> {
-        let mut map = self.lock_map()?;
-        match map.remove(&handle){
+    fn release(&mut self, handle:u32) -> Result<u32,u32> {
+//        let mut map = self.lock_map()?;
+        match self.store.remove(&handle){
             Some(obj) => Ok(0),
             None => Err(10) //TODO better error
         }
@@ -75,7 +81,7 @@ mod tests{
 
     #[test]
     fn sdf_get_closure(){
-        let test:ObjectCache<u32> = Default::default();
+        let mut test:ObjectCache<u32> = Default::default();
         let temp = test.add(234, 2222).unwrap();
         let rtn = test.get(234, |obj| Ok(obj.clone()));
         assert_eq!(2222, rtn.unwrap())
@@ -84,7 +90,7 @@ mod tests{
 
     #[test]
     fn sdf_to_string_test() {
-        let test:ObjectCache<u32> = Default::default();
+        let mut test:ObjectCache<u32> = Default::default();
         let temp = test.add(234, 2222).unwrap();
         let string: String = test.get(234, |obj|{
            Ok(String::from("TEST"))
@@ -95,7 +101,7 @@ mod tests{
     }
 
     fn mut_object_test(){
-        let test:ObjectCache<String> = Default::default();
+        let mut test:ObjectCache<String> = Default::default();
         let temp = test.add(234, String::from("TEST")).unwrap();
 
         test.get_mut(234, |obj|{
