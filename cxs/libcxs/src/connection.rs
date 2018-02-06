@@ -8,6 +8,7 @@ use utils::libindy::wallet;
 use utils::error;
 use utils::libindy::signus::SignusUtils;
 use utils::libindy::crypto;
+use utils::json::mapped_key_rewrite;
 use api::CxsStateType;
 use rand::Rng;
 use std::sync::Mutex;
@@ -20,8 +21,6 @@ use messages::get_message::Message;
 use serde::Deserialize;
 use self::rmp_serde::{encode, Deserializer};
 use messages::MessageResponseCode::{ MessageAccepted };
-use serde_json::Value;
-use serde_json::Map;
 
 lazy_static! {
     static ref CONNECTION_MAP: Mutex<HashMap<u32, Box<Connection>>> = Default::default();
@@ -516,60 +515,53 @@ pub fn generate_encrypted_payload(my_vk: &str, their_vk: &str, data: &str, msg_t
 //**********
 // Code to convert InviteDetails to Abbreviated String
 //**********
+lazy_static!{
+    static ref ABBREVIATIONS: Vec<(&'static str, &'static str)> = {
+        vec![
+        ("statusCode", "sc"),
+        ("connReqId", "id"),
+        ("senderDetail", "s"),
+        ("name", "n"),
+        ("agentKeyDlgProof", "dp"),
+        ("agentDID", "d"),
+        ("agentDelegatedKey", "k"),
+        ("signature", "s"),
+        ("DID", "d"),
+        ("logoUrl", "l"),
+        ("verKey", "v"),
+        ("senderAgencyDetail", "sa"),
+        ("endpoint", "e"),
+        ("targetName", "t"),
+        ("statusMsg", "sm"),
+        ]
+    };
+}
 lazy_static! {
-    static ref ABBREVIATIONS: HashMap<&'static str, &'static str> = {
+    static ref FULL_TO_ABBR: HashMap<&'static str, &'static str> = {
         let mut m = HashMap::new();
-        m.insert("statusCode", "sc");
-        m.insert("connReqId", "id");
-        m.insert("senderDetail", "s");
-        m.insert("name", "n");
-        m.insert("agentKeyDlgProof", "dp");
-        m.insert("agentDID", "d");
-        m.insert("agentDelegatedKey", "k");
-        m.insert("signature", "s");
-        m.insert("DID", "d");
-        m.insert("logoUrl", "l");
-        m.insert("verKey", "v");
-        m.insert("senderAgencyDetail", "sa");
-        m.insert("endpoint", "e");
-        m.insert("targetName", "t");
-        m.insert("statusMsg", "sm");
+        for pair in ABBREVIATIONS.iter() {
+            m.insert(pair.0, pair.1);
+        }
         m
     };
 }
 
-fn collect_keys(map:&Map<String, Value>) -> Vec<String>{
-    let mut rtn:Vec<String> = Default::default();
-    for key in map.keys() {
-        rtn.push(key.clone());
-    }
-    rtn
+lazy_static! {
+    static ref ABBR_TO_FULL: HashMap<&'static str, &'static str> = {
+        let mut m = HashMap::new();
+        for pair in ABBREVIATIONS.iter() {
+            m.insert(pair.1, pair.0);
+        }
+        m
+    };
 }
 
 fn abbrv_event_detail(val: Value) -> Result<Value, u32> {
+    mapped_key_rewrite(val, &FULL_TO_ABBR)
+}
 
-    if let Value::Object(mut map) = val {
-        let mut keys:Vec<String> = collect_keys(&map);
-
-        while let Some(k) = keys.pop() {
-            let mut value = map.remove(&k).ok_or_else(||{
-                warn!("Unexpected key value mutation");
-                error::INVALID_INVITE_DETAILS.code_num
-            })?;
-
-            value = abbrv_event_detail(value)?;
-            let new_k = match ABBREVIATIONS.get(k.as_str()) {
-                Some(s) => s.to_string(),
-                None => k
-            };
-
-            map.insert(new_k, value);
-        }
-        Ok(Value::Object(map))
-    }
-    else {
-        Ok(val)
-    }
+fn unabbrv_event_detail(val: Value) -> Result<Value, u32> {
+    mapped_key_rewrite(val, &ABBR_TO_FULL)
 }
 
 
