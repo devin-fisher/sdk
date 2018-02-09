@@ -21,6 +21,8 @@ use messages::get_message::Message;
 use serde::Deserialize;
 use self::rmp_serde::{encode, Deserializer};
 use messages::MessageResponseCode::{ MessageAccepted };
+use serde_json::Value;
+use utils::json::KeyMatch;
 
 lazy_static! {
     static ref CONNECTION_MAP: Mutex<HashMap<u32, Box<Connection>>> = Default::default();
@@ -515,53 +517,79 @@ pub fn generate_encrypted_payload(my_vk: &str, their_vk: &str, data: &str, msg_t
 //**********
 // Code to convert InviteDetails to Abbreviated String
 //**********
+
+
+impl KeyMatch for (String,Option<String>){
+    fn matches(&self, key: &String, context: &Vec<String>) -> bool {
+        if key.eq(&self.0) {
+            match context.last() {
+                Some(parent) => {
+                    if let Some(ref expected_parent) = self.1 {
+                        return parent.eq(expected_parent);
+                    }
+                },
+                None => {
+                    return self.1.is_none();
+                }
+            }
+        }
+        false
+    }
+}
+
+
 lazy_static!{
-    static ref ABBREVIATIONS: Vec<(&'static str, &'static str)> = {
+    static ref ABBREVIATIONS: Vec<(String, String)> = {
         vec![
-        ("statusCode", "sc"),
-        ("connReqId", "id"),
-        ("senderDetail", "s"),
-        ("name", "n"),
-        ("agentKeyDlgProof", "dp"),
-        ("agentDID", "d"),
-        ("agentDelegatedKey", "k"),
-        ("signature", "s"),
-        ("DID", "d"),
-        ("logoUrl", "l"),
-        ("verKey", "v"),
-        ("senderAgencyDetail", "sa"),
-        ("endpoint", "e"),
-        ("targetName", "t"),
-        ("statusMsg", "sm"),
+        ("statusCode".to_string(),          "sc".to_string()),
+        ("connReqId".to_string(),           "id".to_string()),
+        ("senderDetail".to_string(),        "s".to_string()),
+        ("name".to_string(),                "n".to_string()),
+        ("agentKeyDlgProof".to_string(),    "dp".to_string()),
+        ("agentDID".to_string(),            "d".to_string()),
+        ("agentDelegatedKey".to_string(),   "k".to_string()),
+        ("signature".to_string(),           "s".to_string()),
+        ("DID".to_string(), "d".to_string()),
+        ("logoUrl".to_string(), "l".to_string()),
+        ("verKey".to_string(), "v".to_string()),
+        ("senderAgencyDetail".to_string(), "sa".to_string()),
+        ("endpoint".to_string(), "e".to_string()),
+        ("targetName".to_string(), "t".to_string()),
+        ("statusMsg".to_string(), "sm".to_string()),
         ]
     };
 }
-lazy_static! {
-    static ref FULL_TO_ABBR: HashMap<&'static str, &'static str> = {
-        let mut m = HashMap::new();
-        for pair in ABBREVIATIONS.iter() {
-            m.insert(pair.0, pair.1);
-        }
-        m
-    };
-}
 
-lazy_static! {
-    static ref ABBR_TO_FULL: HashMap<&'static str, &'static str> = {
-        let mut m = HashMap::new();
-        for pair in ABBREVIATIONS.iter() {
-            m.insert(pair.1, pair.0);
-        }
-        m
+lazy_static!{
+    static ref UNABBREVIATIONS: Vec<((String, Option<String>), String)> = {
+        vec![
+        (("sc".to_string(), None),                                  "statusCode".to_string()),
+        (("id".to_string(), None),                                  "connReqId".to_string()),
+        (("s".to_string(), None),                                   "senderDetail".to_string()),
+        (("n".to_string(), Some("senderDetail".to_string())),       "name".to_string()),
+        (("dp".to_string(), Some("senderDetail".to_string())),      "agentKeyDlgProof".to_string()),
+        (("d".to_string(), Some("agentKeyDlgProof".to_string())),   "agentDID".to_string()),
+        (("k".to_string(), Some("agentKeyDlgProof".to_string())),   "agentDelegatedKey".to_string()),
+        (("s".to_string(), Some("agentKeyDlgProof".to_string())),   "signature".to_string()),
+        (("d".to_string(), Some("senderDetail".to_string())),       "DID".to_string()),
+        (("l".to_string(), Some("senderDetail".to_string())),       "logoUrl".to_string()),
+        (("v".to_string(), Some("senderDetail".to_string())),       "verKey".to_string()),
+        (("sa".to_string(), None),                                  "senderAgencyDetail".to_string()),
+        (("d".to_string(), Some("senderAgencyDetail".to_string())), "DID".to_string()),
+        (("v".to_string(), Some("senderAgencyDetail".to_string())), "verKey".to_string()),
+        (("e".to_string(), Some("senderAgencyDetail".to_string())), "endpoint".to_string()),
+        (("t".to_string(), None),                                   "targetName".to_string()),
+        (("sm".to_string(), None),                                  "statusMsg".to_string()),
+        ]
     };
 }
 
 fn abbrv_event_detail(val: Value) -> Result<Value, u32> {
-    mapped_key_rewrite(val, &FULL_TO_ABBR)
+    mapped_key_rewrite(val, &ABBREVIATIONS)
 }
 
 fn unabbrv_event_detail(val: Value) -> Result<Value, u32> {
-    mapped_key_rewrite(val, &ABBR_TO_FULL)
+    mapped_key_rewrite(val, &UNABBREVIATIONS)
 }
 
 
@@ -832,8 +860,10 @@ mod tests {
   "t": "there",
   "sm":"message sent"
 });
-        let processed = abbrv_event_detail(un_abbr).unwrap();
+        let processed = abbrv_event_detail(un_abbr.clone()).unwrap();
         assert_eq!(processed, abbr);
+        let unprocessed = unabbrv_event_detail(processed).unwrap();
+        assert_eq!(unprocessed, un_abbr);
     }
 
 }
