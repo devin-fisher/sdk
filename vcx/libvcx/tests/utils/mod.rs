@@ -4,6 +4,9 @@ pub mod cstring;
 pub mod timeout;
 pub mod demo;
 pub mod claim_def_wallet;
+pub mod wallet;
+
+pub mod api_caller;
 //use std::fs;
 //use std::path::Path;
 

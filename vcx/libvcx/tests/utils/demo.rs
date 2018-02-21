@@ -12,7 +12,7 @@ use self::libc::c_char;
 use std::thread;
 use std::time::Duration;
 use std::ffi::CString;
-use vcx::api;
+use self::vcx::api;
 use std::sync::Mutex;
 use std::sync::mpsc::channel;
 
@@ -424,6 +424,6 @@ pub fn create_schema(source_id: &str, schema_name: &str, schema_data: &str) -> (
                                                      cb);
     assert_eq!(rc, 0);
     let (rc, handle) = receiver.recv_timeout(TimeoutUtils::long_timeout()).unwrap();
-    let schema_no = ::vcx::schema::get_sequence_num(handle).unwrap();
+    let schema_no = self::vcx::schema::get_sequence_num(handle).unwrap();
     (rc, handle, schema_no)
 }
