@@ -85,7 +85,6 @@ fn _collect_keys(map:&Map<String, Value>) -> Vec<String>{
 
 #[cfg(test)]
 mod tests {
-    use serde_json;
     use super::*;
 
 
