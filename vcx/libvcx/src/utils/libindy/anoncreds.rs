@@ -7,6 +7,7 @@ use utils::libindy::return_types::{ Return_I32_STR, Return_I32_BOOL, Return_I32_
 use utils::libindy::SigTypes;
 use utils::libindy::error_codes::{map_indy_error_code, map_string_error};
 use utils::timeout::TimeoutUtils;
+use utils::libindy::option_cstring_as_ptn;
 
 extern {
     fn indy_issuer_create_and_store_claim_def(command_handle: i32,
@@ -25,7 +26,8 @@ extern {
                                   schemas_json: *const c_char,
                                   claim_defs_jsons: *const c_char,
                                   revoc_regs_json: *const c_char,
-                                  cb: Option<extern fn(xcommand_handle: i32, err: i32,
+                                  cb: Option<extern fn(xcommand_handle: i32,
+                                                       err: i32,
                                                        valid: bool)>) -> i32;
 
     fn indy_issuer_create_claim(command_handle: i32,
@@ -33,10 +35,32 @@ extern {
                                 claim_req_json: *const c_char,
                                 claim_json: *const c_char,
                                 user_revoc_index: i32,
-                                cb: Option<extern fn(xcommand_handle: i32, err: i32,
+                                cb: Option<extern fn(xcommand_handle: i32,
+                                                     err: i32,
                                                      revoc_reg_update_json: *const c_char, //TODO must be OPTIONAL
-                                                     xclaim_json: *const c_char
-                                )>)-> i32;
+                                                     xclaim_json: *const c_char)>
+        )-> i32;
+
+    fn indy_prover_create_proof(command_handle: i32,
+                                wallet_handle: i32,
+                                proof_req_json: *const c_char,
+                                requested_claims_json: *const c_char,
+                                schemas_json: *const c_char,
+                                master_secret_name: *const c_char,
+                                claim_defs_json: *const c_char,
+                                revoc_regs_json: *const c_char,
+                                cb: Option<extern fn(xcommand_handle: i32,
+                                                     err: i32,
+                                                     proof_json: *const c_char)>
+        ) -> i32;
+
+    fn indy_prover_get_claims_for_proof_req(command_handle: i32,
+                                            wallet_handle: i32,
+                                            proof_request_json: *const c_char,
+                                            cb: Option<extern fn(xcommand_handle: i32,
+                                                err: i32,
+                                                claims_json: *const c_char)>
+    ) -> i32;
 }
 
 fn check_str(str_opt: Option<String>) -> Result<String, u32>{
@@ -125,6 +149,65 @@ pub fn libindy_issuer_create_claim(wallet_handle: i32,
     let str2 = check_str(opt_str2)?;
     Ok((str1, str2))
 }
+
+pub fn libindy_prover_create_proof(wallet_handle: i32,
+                                   proof_req_json: &str,
+                                   requested_claims_json: &str,
+                                   schemas_json: &str,
+                                   master_secret_name: &str,
+                                   claim_defs_json: &str,
+                                   revoc_regs_json: Option<&str>) -> Result<String, u32> {
+    let rtn_obj = Return_I32_STR::new()?;
+
+    let proof_req_json = CString::new(proof_req_json).map_err(map_string_error)?;
+    let requested_claims_json = CString::new(requested_claims_json).map_err(map_string_error)?;
+    let schemas_json = CString::new(schemas_json).map_err(map_string_error)?;
+    let master_secret_name = CString::new(master_secret_name).map_err(map_string_error)?;
+    let claim_defs_json = CString::new(claim_defs_json).map_err(map_string_error)?;
+    let revoc_regs_json = match revoc_regs_json {
+        Some(s) => Some(CString::new(s).map_err(map_string_error)?),
+        None => None
+    };
+
+    unsafe {
+        indy_function_eval(
+            indy_prover_create_proof(rtn_obj.command_handle,
+                                     wallet_handle,
+                                     proof_req_json.as_ptr(),
+                                     requested_claims_json.as_ptr(),
+                                     schemas_json.as_ptr(),
+                                     master_secret_name.as_ptr(),
+                                     claim_defs_json.as_ptr(),
+                                     option_cstring_as_ptn(&revoc_regs_json),
+                                     Some(rtn_obj.get_callback()))
+        ).map_err(map_indy_error_code)?;
+    }
+
+    rtn_obj.receive(TimeoutUtils::some_long()).and_then(check_str)
+}
+
+pub fn libindy_prover_get_claims(wallet_handle: i32,
+                                 filter_json: Option<&str>) -> Result<String, u32> {
+
+    let rtn_obj = Return_I32_STR::new()?;
+
+    let filter_json = match filter_json {
+        Some(s) => Some(CString::new(s).map_err(map_string_error)?),
+        None => None
+    };
+
+    unsafe {
+        indy_function_eval(
+            indy_prover_get_claims_for_proof_req(rtn_obj.command_handle,
+                                                 wallet_handle,
+                                                 option_cstring_as_ptn(&filter_json),
+                                                 Some(rtn_obj.get_callback()))
+        ).map_err(map_indy_error_code)?;
+    }
+
+    rtn_obj.receive(TimeoutUtils::some_long()).and_then(check_str)
+}
+
 
 
 #[cfg(test)]

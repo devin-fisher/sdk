@@ -9,6 +9,12 @@ pub mod pool;
 pub mod crypto;
 mod error_codes;
 
+extern crate libc;
+
+use std::ffi::CString;
+use std::ptr::null;
+use self::libc::c_char;
+
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 use std::fmt;
 
@@ -43,6 +49,12 @@ fn indy_function_eval(err: i32) -> Result<(), i32> {
         }
 }
 
+fn option_cstring_as_ptn(opt: &Option<CString>) -> *const c_char {
+    match opt {
+        &Some(ref s) => s.as_ptr(),
+        &None => null()
+    }
+}
 
 
 #[cfg(test)]
