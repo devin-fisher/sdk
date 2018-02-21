@@ -110,7 +110,7 @@ fn init_actor(actor: &Actor, dir: &Path) {
     ).unwrap();
     println!("Wallet Setup is done.");
 
-    let pairwise_info = pairwise_info(actor);
+    let _pairwise_info = pairwise_info(actor);
     let random_int: u32 = rand::random();
     let logo_url = format!("https://robohash.org/{}?set=set3", random_int);
     let wallet_name = asset_name(actor);
@@ -135,7 +135,7 @@ fn init_actor(actor: &Actor, dir: &Path) {
     let config_data = serde_json::to_string_pretty(&config).unwrap();
     println!("{}", config_data);
 
-    let _config_file_path = dir.join("config.json");
+    let config_file_path = dir.join("config.json");
     let mut config_file = File::create(&config_file_path).unwrap();
     config_file.write_all(config_data.as_bytes()).unwrap();
     config_file.flush().unwrap();
