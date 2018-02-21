@@ -53,6 +53,12 @@ pub static INVALID_SCHEMA_HANDLE: Error = Error{code_num: 1042, message: "Schema
 pub static INVALID_MASTER_SECRET: Error = Error{code_num: 1043, message: "Invalid master secret"};
 pub static ALREADY_INITIALIZED: Error = Error{code_num: 1044, message: "Library already initialized"};
 pub static INVALID_INVITE_DETAILS: Error = Error{code_num: 1045, message: "Invalid invite details structure"};
+pub static INVALID_CONNECTION_STATE: Error = Error{code_num: 1046, message: "Invalid connection state"};
+pub static WALLET_ALREADY_EXISTS: Error = Error{code_num: 1047, message: "Indy wallet already exists"};
+pub static WALLET_ALREADY_OPEN: Error = Error{code_num: 1048, message: "Indy wallet already open"};
+pub static INVALID_OBJ_HANDLE: Error = Error{code_num: 1049, message: "Obj was not found with handle"};
+pub static INVALID_DISCLOSED_PROOF_HANDLE: Error = Error{code_num: 1050, message: "Obj was not found with handle"};
+pub static SERIALIZATION_ERROR: Error = Error{code_num: 1051, message: "Unable to serialize"};
 
 lazy_static! {
     static ref ERROR_MESSAGES: HashMap<u32, &'static str> = {
@@ -100,9 +106,15 @@ lazy_static! {
         insert_message(&mut m, &INVALID_SCHEMA_SEQ_NO);
         insert_message(&mut m, &INVALID_SCHEMA_CREATION);
         insert_message(&mut m, &INVALID_SCHEMA_HANDLE);
+        insert_message(&mut m, &INVALID_MASTER_SECRET);
         insert_message(&mut m, &ALREADY_INITIALIZED);
         insert_message(&mut m, &INVALID_INVITE_DETAILS);
-        insert_message(&mut m, &INVALID_MASTER_SECRET);
+        insert_message(&mut m, &INVALID_CONNECTION_STATE);
+        insert_message(&mut m, &WALLET_ALREADY_EXISTS);
+        insert_message(&mut m, &WALLET_ALREADY_OPEN);
+        insert_message(&mut m, &INVALID_OBJ_HANDLE);
+        insert_message(&mut m, &INVALID_DISCLOSED_PROOF_HANDLE);
+        insert_message(&mut m, &SERIALIZATION_ERROR);
         m
     };
 }
@@ -330,5 +342,34 @@ mod tests {
         // map_libindy_err called with Err returned
         assert_eq!(fn_map_err(Err(0)).map_err(|x| map_libindy_err(x, default)), Err(default))
     }
-}
 
+    #[test]
+    fn test_invalid_connection_state() {
+        assert_eq!(error_message(&INVALID_CONNECTION_STATE.code_num), INVALID_CONNECTION_STATE.message);
+    }
+
+    #[test]
+    fn test_wallet_already_exists() {
+        assert_eq!(error_message(&WALLET_ALREADY_EXISTS.code_num), WALLET_ALREADY_EXISTS.message);
+    }
+
+    #[test]
+    fn test_wallet_already_open() {
+        assert_eq!(error_message(&WALLET_ALREADY_OPEN.code_num), WALLET_ALREADY_OPEN.message);
+    }
+
+    #[test]
+    fn test_invalid_obj_handle() {
+        assert_eq!(error_message(&INVALID_OBJ_HANDLE.code_num), INVALID_OBJ_HANDLE.message);
+    }
+
+    #[test]
+    fn test_disclosed_proof_handle() {
+        assert_eq!(error_message(&INVALID_DISCLOSED_PROOF_HANDLE.code_num), INVALID_DISCLOSED_PROOF_HANDLE.message);
+    }
+
+    #[test]
+    fn test_serialization_error() {
+        assert_eq!(error_message(&SERIALIZATION_ERROR.code_num), SERIALIZATION_ERROR.message);
+    }
+}
