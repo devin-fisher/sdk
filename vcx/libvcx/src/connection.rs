@@ -22,7 +22,6 @@ use serde::Deserialize;
 use self::rmp_serde::{encode, Deserializer};
 use messages::MessageResponseCode::{ MessageAccepted };
 use serde_json::Value;
-use serde_json::Map;
 use utils::json::KeyMatch;
 
 lazy_static! {
@@ -43,12 +42,11 @@ struct Connection {
     handle: u32,
     pw_did: String,
     pw_verkey: String,
-    did_endpoint: String,
     state: VcxStateType,
     uuid: String,
     endpoint: String,
     // For QR code invitation
-    invite_detail: InviteDetail,
+    invite_detail: Option<InviteDetail>,
     agent_did: String,
     agent_vk: String,
     their_pw_did: String,
@@ -56,24 +54,20 @@ struct Connection {
 }
 
 impl Connection {
-    fn connect(&mut self, options: Option<String>) -> Result<u32,u32> {
+    fn _connect_send_invite(&mut self, options: Option<String>) -> Result<u32,u32> {
         info!("\"vcx_connection_connect\" for handle {}", self.handle);
-        if !self.ready_to_connect() {
-            warn!("connection {} in state {} not ready to connect",self.handle,self.state as u32);
-            return Err(error::NOT_READY.code_num);
-        }
 
         let options_obj: ConnectionOptions = match options{
             Some(opt) => {
                 match opt.trim().is_empty() {
                     true => ConnectionOptions {
-                                connection_type: None,
-                                phone: None
-                            },
+                        connection_type: None,
+                        phone: None
+                    },
                     false => match serde_json::from_str(opt.trim()) {
-                                Ok(val) => val,
-                                Err(_) => return Err(error::INVALID_OPTION.code_num),
-                            }
+                        Ok(val) => val,
+                        Err(_) => return Err(error::INVALID_OPTION.code_num),
+                    }
                 }
             },
             None => {
@@ -97,7 +91,7 @@ impl Connection {
             Ok(response) => {
                 self.state = VcxStateType::VcxStateOfferSent;
                 self.invite_detail = match parse_invite_detail(&response[0]) {
-                    Ok(x) => x,
+                    Ok(x) => Some(x),
                     Err(x) => {
                         error!("error when sending invite: {}", x);
                         return Err(x);
@@ -108,24 +102,75 @@ impl Connection {
         }
     }
 
+    fn _connect_accept_invite(&mut self, options: Option<String>) -> Result<u32,u32> {
+
+        if let Some(ref details) = self.invite_detail{
+            match messages::accept_invite()
+                .to(&self.pw_did)
+                .to_vk(&self.pw_verkey)
+                .agent_did(&self.agent_did)
+                .agent_vk(&self.agent_vk)
+                .sender_details(&details.sender_detail)
+                .sender_agency_details(&details.sender_agency_detail)
+                .send_secure() {
+                Err(_) => {
+                    Err(error::POST_MSG_FAILURE.code_num)
+                },
+                Ok(response) => {
+                    self.state = VcxStateType::VcxStateAccepted;
+                    Ok(error::SUCCESS.code_num)
+                }
+            }
+        }
+        else{
+            warn!("Can not connect without Invite Details");
+            Err(error::NOT_READY.code_num)
+        }
+    }
+
+
+    fn connect(&mut self, options: Option<String>) -> Result<u32,u32> {
+        match self.state {
+            VcxStateType::VcxStateInitialized
+                | VcxStateType::VcxStateOfferSent => self._connect_send_invite(options),
+            VcxStateType::VcxStateRequestReceived => self._connect_accept_invite(options),
+            _ => {
+                warn!("connection {} in state {} not ready to connect",self.handle,self.state as u32);
+                Err(error::NOT_READY.code_num)
+            }
+        }
+    }
+
     fn get_state(&self) -> u32 { self.state as u32 }
-    fn set_pw_did(&mut self, did: &str) { self.pw_did = did.to_string(); }
-    fn set_their_pw_did(&mut self, did: &str) { self.their_pw_did = did.to_string(); }
-    fn set_agent_did(&mut self, did: &str) { self.agent_did = did.to_string(); }
-    fn get_agent_did(&self) -> String { self.agent_did.clone() }
     fn set_state(&mut self, state: VcxStateType) { self.state = state; }
+
     fn get_pw_did(&self) -> String { self.pw_did.clone() }
+    fn set_pw_did(&mut self, did: &str) { self.pw_did = did.to_string(); }
+
     fn get_their_pw_did(&self) -> String { self.their_pw_did.clone() }
+    fn set_their_pw_did(&mut self, did: &str) { self.their_pw_did = did.to_string(); }
+
+    fn get_agent_did(&self) -> String { self.agent_did.clone() }
+    fn set_agent_did(&mut self, did: &str) { self.agent_did = did.to_string(); }
+
     fn get_pw_verkey(&self) -> String { self.pw_verkey.clone() }
-    fn get_their_pw_verkey(&self) -> String { self.their_pw_verkey.clone() }
     fn set_pw_verkey(&mut self, verkey: &str) { self.pw_verkey = verkey.to_string(); }
+
+    fn get_their_pw_verkey(&self) -> String { self.their_pw_verkey.clone() }
     fn set_their_pw_verkey(&mut self, verkey: &str) { self.their_pw_verkey = verkey.to_string(); }
-    fn set_agent_verkey(&mut self, verkey: &str) { self.agent_vk = verkey.to_string(); }
+
     fn get_agent_verkey(&self) -> String { self.agent_vk.clone() }
+    fn set_agent_verkey(&mut self, verkey: &str) { self.agent_vk = verkey.to_string(); }
+
     fn get_uuid(&self) -> String { self.uuid.clone() }
-    fn get_endpoint(&self) -> String { self.endpoint.clone() }
     fn set_uuid(&mut self, uuid: &str) { self.uuid = uuid.to_string(); }
+
+    fn get_endpoint(&self) -> String { self.endpoint.clone() }
     fn set_endpoint(&mut self, endpoint: &str) { self.endpoint = endpoint.to_string(); }
+
+    fn get_invite_detail(&self) -> Option<InviteDetail> { self.invite_detail.clone() }
+    fn set_invite_detail(&mut self, invite_detail: InviteDetail) { self.invite_detail = Some(invite_detail); }
+
     fn ready_to_connect(&self) -> bool {
         if self.state == VcxStateType::VcxStateNone || self.state == VcxStateType::VcxStateAccepted {
             false
@@ -149,25 +194,11 @@ pub fn set_agent_did(handle: u32, did: &str) {
     };
 }
 
-pub fn set_pw_did(handle: u32, did: &str) {
-    match CONNECTION_MAP.lock().unwrap().get_mut(&handle) {
-        Some(cxn) => cxn.set_pw_did(did),
-        None => {}
-    };
-}
-
-pub fn set_their_pw_did(handle: u32, did: &str) {
-    match CONNECTION_MAP.lock().unwrap().get_mut(&handle) {
-        Some(cxn) => cxn.set_their_pw_did(did),
-        None => {}
-    };
-}
-
-pub fn set_state(handle: u32, state: VcxStateType) {
-    match CONNECTION_MAP.lock().unwrap().get_mut(&handle) {
-        Some(cxn) => cxn.set_state(state),
-        None => {}
-    };
+pub fn get_agent_did(handle: u32) -> Result<String, u32> {
+    match CONNECTION_MAP.lock().unwrap().get(&handle) {
+        Some(cxn) => Ok(cxn.get_agent_did()),
+        None => Err(error::INVALID_CONNECTION_HANDLE.code_num),
+    }
 }
 
 pub fn get_pw_did(handle: u32) -> Result<String, u32> {
@@ -177,11 +208,39 @@ pub fn get_pw_did(handle: u32) -> Result<String, u32> {
     }
 }
 
-pub fn get_agent_did(handle: u32) -> Result<String, u32> {
+pub fn set_pw_did(handle: u32, did: &str) {
+    match CONNECTION_MAP.lock().unwrap().get_mut(&handle) {
+        Some(cxn) => cxn.set_pw_did(did),
+        None => {}
+    };
+}
+
+pub fn get_their_pw_did(handle: u32) -> Result<String, u32> {
     match CONNECTION_MAP.lock().unwrap().get(&handle) {
-        Some(cxn) => Ok(cxn.get_agent_did()),
+        Some(cxn) => Ok(cxn.get_their_pw_did()),
         None => Err(error::INVALID_CONNECTION_HANDLE.code_num),
     }
+}
+
+pub fn set_their_pw_did(handle: u32, did: &str) {
+    match CONNECTION_MAP.lock().unwrap().get_mut(&handle) {
+        Some(cxn) => cxn.set_their_pw_did(did),
+        None => {}
+    };
+}
+
+pub fn get_their_pw_verkey(handle: u32) -> Result<String, u32> {
+    match CONNECTION_MAP.lock().unwrap().get(&handle) {
+        Some(cxn) => Ok(cxn.get_their_pw_verkey()),
+        None => Err(error::INVALID_CONNECTION_HANDLE.code_num),
+    }
+}
+
+pub fn set_their_pw_verkey(handle: u32, verkey: &str) {
+    match CONNECTION_MAP.lock().unwrap().get_mut(&handle) {
+        Some(cxn) => cxn.set_their_pw_verkey(verkey),
+        None => {}
+    };
 }
 
 pub fn get_uuid(handle: u32) -> Result<String, u32> {
@@ -198,16 +257,16 @@ pub fn set_uuid(handle: u32, uuid: &str) {
     };
 }
 
+pub fn get_endpoint(handle: u32) -> Result<String, u32> {
+    match CONNECTION_MAP.lock().unwrap().get(&handle) {
+        Some(cxn) => Ok(cxn.get_endpoint()),
+        None => Err(error::NO_ENDPOINT.code_num),
+    }
+}
+
 pub fn set_endpoint(handle: u32, endpoint: &str) {
     match CONNECTION_MAP.lock().unwrap().get_mut(&handle) {
         Some(cxn) => cxn.set_endpoint(endpoint),
-        None => {}
-    };
-}
-
-pub fn set_agent_verkey(handle: u32, verkey: &str) {
-    match CONNECTION_MAP.lock().unwrap().get_mut(&handle) {
-        Some(cxn) => cxn.set_agent_verkey(verkey),
         None => {}
     };
 }
@@ -219,25 +278,11 @@ pub fn get_agent_verkey(handle: u32) -> Result<String, u32> {
     }
 }
 
-pub fn set_pw_verkey(handle: u32, verkey: &str) {
+pub fn set_agent_verkey(handle: u32, verkey: &str) {
     match CONNECTION_MAP.lock().unwrap().get_mut(&handle) {
-        Some(cxn) => cxn.set_pw_verkey(verkey),
+        Some(cxn) => cxn.set_agent_verkey(verkey),
         None => {}
     };
-}
-
-pub fn set_their_pw_verkey(handle: u32, verkey: &str) {
-    match CONNECTION_MAP.lock().unwrap().get_mut(&handle) {
-        Some(cxn) => cxn.set_their_pw_verkey(verkey),
-        None => {}
-    };
-}
-
-pub fn get_endpoint(handle: u32) -> Result<String, u32> {
-    match CONNECTION_MAP.lock().unwrap().get(&handle) {
-        Some(cxn) => Ok(cxn.get_endpoint()),
-        None => Err(error::NO_ENDPOINT.code_num),
-    }
 }
 
 pub fn get_pw_verkey(handle: u32) -> Result<String, u32> {
@@ -247,11 +292,11 @@ pub fn get_pw_verkey(handle: u32) -> Result<String, u32> {
     }
 }
 
-pub fn get_their_pw_verkey(handle: u32) -> Result<String, u32> {
-    match CONNECTION_MAP.lock().unwrap().get(&handle) {
-        Some(cxn) => Ok(cxn.get_their_pw_verkey()),
-        None => Err(error::INVALID_CONNECTION_HANDLE.code_num),
-    }
+pub fn set_pw_verkey(handle: u32, verkey: &str) {
+    match CONNECTION_MAP.lock().unwrap().get_mut(&handle) {
+        Some(cxn) => cxn.set_pw_verkey(verkey),
+        None => {}
+    };
 }
 
 pub fn get_state(handle: u32) -> u32 {
@@ -259,6 +304,13 @@ pub fn get_state(handle: u32) -> u32 {
         Some(t) => t.get_state(),
         None=> VcxStateType::VcxStateNone as u32,
     }
+}
+
+pub fn set_state(handle: u32, state: VcxStateType) {
+    match CONNECTION_MAP.lock().unwrap().get_mut(&handle) {
+        Some(cxn) => cxn.set_state(state),
+        None => {}
+    };
 }
 
 pub fn create_agent_pairwise(handle: u32) -> Result<u32, u32> {
@@ -310,11 +362,10 @@ fn create_connection(source_id: String) -> u32 {
         handle: new_handle,
         pw_did: String::new(),
         pw_verkey: String::new(),
-        did_endpoint: String::new(),
         state: VcxStateType::VcxStateNone,
         uuid: String::new(),
         endpoint: String::new(),
-        invite_detail: InviteDetail::new(),
+        invite_detail: None,
         agent_did: String::new(),
         agent_vk: String::new(),
         their_pw_did: String::new(),
@@ -326,45 +377,86 @@ fn create_connection(source_id: String) -> u32 {
     new_handle
 }
 
-pub fn build_connection(source_id: String) -> Result<u32,u32> {
-    // Check to make sure source_id is unique
-
-    let new_handle = create_connection(source_id);
-
+fn init_connection(handle: u32) -> Result<u32,u32> {
     let (my_did, my_verkey) = match SignusUtils::create_and_store_my_did(wallet::get_wallet_handle(),None) {
         Ok(y) => y,
         Err(x) => {
             error!("could not create DID/VK: {}", x);
-            release(new_handle);
             return Err(error::UNKNOWN_LIBINDY_ERROR.code_num);
         },
     };
 
-    info!("handle: {} did: {} verkey: {}", new_handle, my_did, my_verkey);
-    set_pw_did(new_handle, &my_did);
-    set_pw_verkey(new_handle, &my_verkey);
+    info!("handle: {} did: {} verkey: {}", handle, my_did, my_verkey);
+    set_pw_did(handle, &my_did);
+    set_pw_verkey(handle, &my_verkey);
 
-    match create_agent_pairwise(new_handle) {
+    match create_agent_pairwise(handle) {
         Err(x) => {
             error!("could not create pairwise key on agent: {}", x);
-            release(new_handle);
+            release(handle);
             return Err(x);
         },
         Ok(_) => info!("created pairwise key on agent"),
     };
 
-    match update_agent_profile(new_handle) {
+    match update_agent_profile(handle) {
         Err(x) => {
             error!("could not update profile on agent: {}", x);
-            release(new_handle);
+            release(handle);
             return Err(x);
         },
         Ok(_) => info!("updated profile on agent"),
     };
 
-    set_state(new_handle, VcxStateType::VcxStateInitialized);
+    set_state(handle, VcxStateType::VcxStateInitialized);
 
-    Ok(new_handle)
+    Ok(error::SUCCESS.code_num)
+}
+
+pub fn build_connection(source_id: String) -> Result<u32,u32> {
+    let new_handle = create_connection(source_id);
+
+    match init_connection(new_handle) {
+        Ok(_) => Ok(new_handle),
+        Err(x) => {
+            release(new_handle);
+            Err(x)
+        }
+    }
+}
+
+pub fn build_connection_with_details(source_id: String, details: String) -> Result<u32,u32> {
+    let mut details = serde_json::to_value(details)
+        .or(Err(error::INVALID_JSON.code_num))?;
+
+    details = unabbrv_event_detail(details)?;
+
+    let invite_details:InviteDetail = serde_json::from_value(details)
+        .or(Err(error::INVALID_INVITE_DETAILS.code_num))?;
+
+    let new_handle = create_connection(source_id);
+
+    match init_connection(new_handle){
+        Ok(_) => (),
+        Err(x) => {
+            release(new_handle);
+            return Err(x);
+        }
+    };
+
+    set_their_pw_did(new_handle, invite_details.sender_detail.did.as_str());
+    set_their_pw_verkey(new_handle, invite_details.sender_detail.verkey.as_str());
+
+    set_agent_did(new_handle, invite_details.sender_agency_detail.did.as_str());
+    set_agent_verkey(new_handle, invite_details.sender_agency_detail.verkey.as_str());
+    set_endpoint(new_handle, invite_details.sender_agency_detail.endpoint.as_str());
+
+
+    set_invite_details(new_handle, invite_details);
+
+    set_state(new_handle, VcxStateType::VcxStateRequestReceived);
+
+    Ok(error::SUCCESS.code_num)
 }
 
 pub fn parse_acceptance_details(handle: u32, message: &Message) -> Result<SenderDetail, u32> {
@@ -491,6 +583,14 @@ pub fn get_invite_details(handle: u32, abbreviated:bool) -> Result<String,u32> {
 
 }
 
+pub fn set_invite_details(handle: u32, invite_detail: InviteDetail) {
+    match CONNECTION_MAP.lock().unwrap().get_mut(&handle) {
+        Some(cxn) => cxn.set_invite_detail(invite_detail),
+        None => {}
+    };
+}
+
+
 pub fn parse_invite_detail(response: &str) -> Result<InviteDetail, u32> {
 
     let details: InviteDetail = match serde_json::from_str(response) {
@@ -525,6 +625,7 @@ pub fn generate_encrypted_payload(my_vk: &str, their_vk: &str, data: &str, msg_t
 //**********
 // Code to convert InviteDetails to Abbreviated String
 //**********
+
 
 impl KeyMatch for (String,Option<String>){
     fn matches(&self, key: &String, context: &Vec<String>) -> bool {
@@ -676,11 +777,10 @@ mod tests {
             handle,
             pw_did: "8XFh8yBzrpJQmNyZzgoTqB".to_string(),
             pw_verkey: "EkVTa7SCJ5SntpYyX7CSb2pcBhiVGT9kWSagA8a9T69A".to_string(),
-            did_endpoint: String::new(),
             state: VcxStateType::VcxStateOfferSent,
             uuid: String::new(),
             endpoint: String::new(),
-            invite_detail: InviteDetail::new(),
+            invite_detail: Some(InviteDetail::new()),
             agent_did: "8XFh8yBzrpJQmNyZzgoTqB".to_string(),
             agent_vk: "EkVTa7SCJ5SntpYyX7CSb2pcBhiVGT9kWSagA8a9T69A".to_string(),
             their_pw_did: String::new(),
@@ -768,11 +868,10 @@ mod tests {
             handle,
             pw_did: "8XFh8yBzrpJQmNyZzgoTqB".to_string(),
             pw_verkey: "EkVTa7SCJ5SntpYyX7CSb2pcBhiVGT9kWSagA8a9T69A".to_string(),
-            did_endpoint: String::new(),
             state: VcxStateType::VcxStateOfferSent,
             uuid: String::new(),
             endpoint: String::new(),
-            invite_detail: InviteDetail::new(),
+            invite_detail: None,
             agent_did: "8XFh8yBzrpJQmNyZzgoTqB".to_string(),
             agent_vk: "EkVTa7SCJ5SntpYyX7CSb2pcBhiVGT9kWSagA8a9T69A".to_string(),
             their_pw_did: String::new(),
@@ -878,8 +977,10 @@ mod tests {
   "t": "there",
   "sm":"message sent"
 });
-        let processed = abbrv_event_detail(un_abbr).unwrap();
+        let processed = abbrv_event_detail(un_abbr.clone()).unwrap();
         assert_eq!(processed, abbr);
+        let unprocessed = unabbrv_event_detail(processed).unwrap();
+        assert_eq!(unprocessed, un_abbr);
     }
 
 }
