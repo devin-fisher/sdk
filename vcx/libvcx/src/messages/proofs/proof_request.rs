@@ -147,6 +147,7 @@ impl ProofRequestMessage {
         proof_attrs.attrs = match serde_json::from_str(predicates) {
             Ok(x) => x,
             Err(x) => {
+                warn!("Invalid predicate JSON");
                 self.validate_rc = error::INVALID_JSON.code_num;
                 return self;
             }

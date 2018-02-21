@@ -32,6 +32,7 @@ pub mod connection;
 pub mod issuer_claim;
 pub mod claim_request;
 pub mod proof;
+pub mod disclosed_proof;
 pub mod schema;
 pub mod claim_def;
 pub mod proof_compliance;
