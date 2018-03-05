@@ -14,6 +14,7 @@ use messages::proofs::proof_message::{ProofMessage, ClaimData };
 use messages;
 use messages::proofs::proof_request::{ ProofRequestMessage };
 use messages::GeneralMessage;
+use messages::send_message::parse_msg_uid;
 use utils::httpclient;
 use utils::error;
 use utils::constants::*;
@@ -215,7 +216,7 @@ impl Proof {
             .edge_agent_payload(&data)
             .send_secure() {
             Ok(response) => {
-                self.msg_uid = get_proof_details(&response[0])?;
+                self.msg_uid = parse_msg_uid(&response[0])?;
                 self.state = VcxStateType::VcxStateOfferSent;
                 return Ok(error::SUCCESS.code_num)
             },
@@ -397,26 +398,6 @@ pub fn send_proof_request(handle: u32, connection_handle: u32) -> Result<u32,u32
     }
 }
 
-fn get_proof_details(response: &str) -> Result<String, u32> {
-    match serde_json::from_str(response) {
-        Ok(json) => {
-            let json: serde_json::Value = json;
-            let detail = match json["uid"].as_str() {
-                Some(x) => x,
-                None => {
-                    info!("response had no uid");
-                    return Err(error::INVALID_JSON.code_num)
-                },
-            };
-            Ok(String::from(detail))
-        },
-        Err(_) => {
-            info!("Proof called without a valid response from server");
-            Err(error::INVALID_JSON.code_num)
-        },
-    }
-}
-
 pub fn get_proof_uuid(handle: u32) -> Result<String,u32> {
     match PROOF_MAP.lock().unwrap().get(&handle) {
         Some(proof) => Ok(proof.get_proof_uuid()),
@@ -428,14 +409,14 @@ fn parse_proof_payload(payload: &Vec<u8>) -> Result<ProofMessage, u32> {
     debug!("parsing proof payload: {:?}", payload);
     let data = messages::extract_json_payload(payload)?;
 
-    let my_claim_req = match ProofMessage::from_str(&data) {
+    let proof = match ProofMessage::from_str(&data) {
         Ok(x) => x,
         Err(x) => {
             warn!("invalid json {}", x);
             return Err(error::INVALID_JSON.code_num);
         },
     };
-    Ok(my_claim_req)
+    Ok(proof)
 }
 
 pub fn get_proof(handle: u32) -> Result<String,u32> {

@@ -73,6 +73,27 @@ export interface IFFIEntryPoint {
   vcx_proof_serialize: (commandId: number, handle: string, cb: any) => number,
   vcx_proof_update_state: (commandId: number, handle: string, cb: any) => number,
   vcx_proof_get_state: (commandId: number, handle: string, cb: any) => number,
+
+  // disclosed proof
+  vcx_disclosed_proof_create_with_request: (commandId: number, sourceId: string, req: string, cb: any) => number,
+  vcx_disclosed_proof_release: (handle: string) => number,
+  vcx_disclosed_proof_send_proof: (commandId: number, proofHandle: string, connectionHandle: string, cb: any) => number,
+  vcx_disclosed_proof_serialize: (commandId: number, handle: string, cb: any) => number,
+  vcx_disclosed_proof_deserialize: (commandId: number, data: string, cb: any) => number,
+  vcx_disclosed_proof_update_state: (commandId: number, handle: string, cb: any) => number,
+  vcx_disclosed_proof_get_state: (commandId: number, handle: string, cb: any) => number,
+  vcx_disclosed_proof_new_requests: (commandId: number, connectionHandle: string, cb: any) => number,
+
+  // claim
+  vcx_claim_create_with_offer: (commandId: number, sourceId: string, req: string, cb: any) => number,
+  vcx_claim_release: (handle: string) => number,
+  vcx_claim_send_request: (commandId: number, handle: string, connectionHandle: string, cb: any) => number,
+  vcx_claim_serialize: (commandId: number, handle: string, cb: any) => number,
+  vcx_claim_deserialize: (commandId: number, data: string, cb: any) => number,
+  vcx_claim_update_state: (commandId: number, handle: string, cb: any) => number,
+  vcx_claim_get_state: (commandId: number, handle: string, cb: any) => number,
+  vcx_claim_new_offers: (commandId: number, connectionHandle: string, cb: any) => number,
+
   // mock
   vcx_set_next_agency_response: (messageIndex: number) => void,
 
@@ -137,6 +158,30 @@ export const FFIConfiguration: { [ Key in keyof IFFIEntryPoint ]: any } = {
   vcx_proof_serialize: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_PROOF_HANDLE, FFI_CALLBACK_PTR]],
   vcx_proof_update_state: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_PROOF_HANDLE, FFI_CALLBACK_PTR]],
   vcx_proof_get_state: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_PROOF_HANDLE, FFI_CALLBACK_PTR]],
+
+  // disclosed proof
+  vcx_disclosed_proof_create_with_request: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_SOURCE_ID, FFI_STRING_DATA,
+    FFI_CALLBACK_PTR]],
+  vcx_disclosed_proof_release: [FFI_ERROR_CODE, [FFI_PROOF_HANDLE]],
+  vcx_disclosed_proof_send_proof: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_PROOF_HANDLE, FFI_CONNECTION_HANDLE,
+    FFI_CALLBACK_PTR]],
+  vcx_disclosed_proof_serialize: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_PROOF_HANDLE, FFI_CALLBACK_PTR]],
+  vcx_disclosed_proof_deserialize: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_STRING_DATA, FFI_CALLBACK_PTR]],
+  vcx_disclosed_proof_update_state: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_PROOF_HANDLE, FFI_CALLBACK_PTR]],
+  vcx_disclosed_proof_get_state: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_PROOF_HANDLE, FFI_CALLBACK_PTR]],
+  vcx_disclosed_proof_new_requests: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_CONNECTION_HANDLE, FFI_CALLBACK_PTR]],
+
+  // claim
+  vcx_claim_create_with_offer: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_SOURCE_ID, FFI_STRING_DATA, FFI_CALLBACK_PTR]],
+  vcx_claim_release: [FFI_ERROR_CODE, [FFI_CLAIM_HANDLE]],
+  vcx_claim_send_request: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_CLAIM_HANDLE, FFI_CONNECTION_HANDLE,
+    FFI_CALLBACK_PTR]],
+  vcx_claim_serialize: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_CLAIM_HANDLE, FFI_CALLBACK_PTR]],
+  vcx_claim_deserialize: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_STRING_DATA, FFI_CALLBACK_PTR]],
+  vcx_claim_update_state: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_CLAIM_HANDLE, FFI_CALLBACK_PTR]],
+  vcx_claim_get_state: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_CLAIM_HANDLE, FFI_CALLBACK_PTR]],
+  vcx_claim_new_offers: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_CONNECTION_HANDLE, FFI_CALLBACK_PTR]],
+
   // claimDef
   vcx_claimdef_create: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_SOURCE_ID, FFI_STRING_DATA, FFI_SCHEMA_NUMBER,
     FFI_STRING_DATA, FFI_BOOL, FFI_CALLBACK_PTR]],

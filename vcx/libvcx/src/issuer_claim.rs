@@ -11,6 +11,7 @@ use messages;
 use settings;
 use messages::GeneralMessage;
 use messages::MessageResponseCode::{ MessageAccepted };
+use messages::send_message::parse_msg_uid;
 use connection;
 use claim_request::ClaimRequest;
 use utils::libindy::wallet;
@@ -37,7 +38,7 @@ pub struct IssuerClaim {
     pub claim_request: Option<ClaimRequest>,
     claim_name: String,
     pub claim_id: String,
-    ref_msg_id: String,
+    ref_msg_id: Option<String>,
     // the following 6 are pulled from the connection object
     agent_did: String, //agent_did for this relationship
     agent_vk: String,
@@ -49,16 +50,16 @@ pub struct IssuerClaim {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ClaimOffer {
-    msg_type: String,
-    version: String,
-    to_did: String,
-    from_did: String,
-    claim: serde_json::Map<String, serde_json::Value>,
-    schema_seq_no: u32,
-    issuer_did: String,
-    claim_name: String,
-    claim_id: String,
-
+    pub msg_type: String,
+    pub version: String,
+    pub to_did: String,
+    pub from_did: String,
+    pub claim: serde_json::Map<String, serde_json::Value>,
+    pub schema_seq_no: u32,
+    pub issuer_did: String,
+    pub claim_name: String,
+    pub claim_id: String,
+    pub msg_ref_id: Option<String>,
 }
 
 impl IssuerClaim {
@@ -104,7 +105,6 @@ impl IssuerClaim {
             .edge_agent_payload(&data)
             .agent_did(&self.agent_did)
             .agent_vk(&self.agent_vk)
-            .ref_msg_id(&self.ref_msg_id)
             .status_code(&MessageAccepted.as_string())
             .send_secure() {
             Err(x) => {
@@ -112,7 +112,7 @@ impl IssuerClaim {
                 return Err(x);
             },
             Ok(response) => {
-                self.msg_uid = get_offer_details(&response[0])?;
+                self.msg_uid = parse_msg_uid(&response[0])?;
                 self.state = VcxStateType::VcxStateOfferSent;
                 info!("sent claim offer for: {}", self.handle);
                 return Ok(error::SUCCESS.code_num);
@@ -152,14 +152,14 @@ impl IssuerClaim {
         }
 
         debug!("claim data: {}", data);
-
         let data = connection::generate_encrypted_payload(&self.issued_vk, &self.remote_vk, &data, "CLAIM")?;
+
 
         if settings::test_agency_mode_enabled() { httpclient::set_next_u8_response(SEND_CLAIM_OFFER_RESPONSE.to_vec()); }
 
         match messages::send_message().to(&self.issued_did)
             .to_vk(&self.issued_vk)
-            .ref_msg_id(&self.ref_msg_id)
+//            .ref_msg_id(self.ref_msg_id.as_ref())
             .msg_type("claim")
             .status_code((&MessageAccepted.as_string()))
             .edge_agent_payload(&data)
@@ -171,7 +171,7 @@ impl IssuerClaim {
                 return Err(x);
             },
             Ok(response) => {
-                self.msg_uid = get_offer_details(&response[0])?;
+                self.msg_uid = parse_msg_uid(&response[0])?;
                 self.state = VcxStateType::VcxStateAccepted;
                 info!("issued claim: {}", self.handle);
                 return Ok(error::SUCCESS.code_num);
@@ -232,9 +232,9 @@ impl IssuerClaim {
             return Ok(error::SUCCESS.code_num);
         }
         else if self.state != VcxStateType::VcxStateOfferSent || self.msg_uid.is_empty() || self.issued_did.is_empty() {
+
             return Ok(error::SUCCESS.code_num);
         }
-
         let payload = messages::get_message::get_ref_msg(&self.msg_uid, &self.issued_did, &self.issued_vk, &self.agent_did, &self.agent_vk)?;
 
         self.claim_request = Some(parse_claim_req_payload(&payload)?);
@@ -268,6 +268,7 @@ impl IssuerClaim {
             issuer_did: String::from(self.issuer_did.to_owned()),
             claim_name: String::from(self.claim_name.to_owned()),
             claim_id: String::from(self.claim_id.to_owned()),
+            msg_ref_id: None,
         })
     }
 }
@@ -339,7 +340,7 @@ pub fn issuer_claim_create(schema_seq_no: u32,
         claim_request: None,
         claim_name,
         claim_id: new_handle.to_string(),
-        ref_msg_id: String::new(),
+        ref_msg_id: None,
         issued_did: String::new(),
         issued_vk: String::new(),
         remote_did: String::new(),
@@ -424,26 +425,6 @@ pub fn send_claim(handle: u32, connection_handle: u32) -> Result<u32,u32> {
     match ISSUER_CLAIM_MAP.lock().unwrap().get_mut(&handle) {
         Some(c) => Ok(c.send_claim(connection_handle)?),
         None => Err(error::INVALID_ISSUER_CLAIM_HANDLE.code_num),
-    }
-}
-
-fn get_offer_details(response: &str) -> Result<String,u32> {
-    match serde_json::from_str(response) {
-        Ok(json) => {
-            let json: serde_json::Value = json;
-            let detail = match json["uid"].as_str() {
-                Some(x) => x,
-                None => {
-                    info!("response had no uid");
-                    return Err(error::INVALID_JSON.code_num)
-                },
-            };
-            Ok(String::from(detail))
-        },
-        Err(_) => {
-            info!("get_messages called without a valid response from server");
-            Err(error::INVALID_JSON.code_num)
-        },
     }
 }
 
@@ -549,7 +530,7 @@ pub mod tests {
             claim_name: DEFAULT_CLAIM_NAME.to_owned(),
             claim_request: Some(claim_req.to_owned()),
             claim_id: String::from(DEFAULT_CLAIM_ID),
-            ref_msg_id: String::new(),
+            ref_msg_id: None,
             remote_did: DID.to_string(),
             remote_vk: VERKEY.to_string(),
             agent_did: DID.to_string(),
@@ -691,7 +672,7 @@ pub mod tests {
             claim_request: Some(claim_req.to_owned()),
             claim_name: DEFAULT_CLAIM_NAME.to_owned(),
             claim_id: String::from(DEFAULT_CLAIM_ID),
-            ref_msg_id: String::new(),
+            ref_msg_id: None,
             remote_did: DID.to_string(),
             remote_vk: VERKEY.to_string(),
             agent_did: DID.to_string(),

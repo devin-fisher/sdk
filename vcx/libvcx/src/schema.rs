@@ -33,12 +33,12 @@ pub struct SchemaTransaction {
     txn_timestamp: Option<usize>,
     #[serde(rename = "type")]
     txn_type: Option<String>,
-    data: Option<SchemaData>
+    pub data: Option<SchemaData>
 
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-struct SchemaData {
+pub struct SchemaData {
     name: String,
     version: String,
     attr_names: Vec<String>
