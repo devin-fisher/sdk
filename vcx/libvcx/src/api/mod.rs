@@ -9,6 +9,9 @@ pub mod claim_def;
 pub mod schema;
 pub mod claim;
 pub mod disclosed_proof;
+pub mod trust_ping;
+pub mod trust_pong;
+
 
 use std::fmt;
 

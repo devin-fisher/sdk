@@ -37,6 +37,9 @@ pub mod disclosed_proof;
 pub mod schema;
 pub mod claim_def;
 pub mod proof_compliance;
+pub mod trust_ping;
+pub mod trust_pong;
+
 mod object_cache;
 
 pub fn create_path(s:&str) -> &Path {
