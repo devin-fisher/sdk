@@ -20,6 +20,9 @@ struct CreateMsgPayload {
     #[serde(rename = "@type")]
     msg_type: MsgType,
     mtype: String,
+    #[serde(rename = "replyToMsgId")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reply_to_msg_id: Option<String>
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, PartialOrd)]
@@ -53,7 +56,8 @@ struct AcceptMsgDetailPayload {
     #[serde(rename = "keyDlgProof")]
     key_proof: KeyDlgProofPayload,
     sender_detail: Option<SenderDetail>,
-    sender_agency_detail: Option<SenderAgencyDetail>
+    sender_agency_detail: Option<SenderAgencyDetail>,
+    answer_status_code: Option<String>
 }
 
 #[derive(Clone, Serialize, Debug, PartialEq, PartialOrd)]
@@ -135,7 +139,7 @@ pub struct SenderAgencyDetail {
 #[serde(rename_all = "camelCase")]
 pub struct InviteDetail {
     status_code: String,
-    conn_req_id: String,
+    pub conn_req_id: String,
     pub sender_detail: SenderDetail,
     pub sender_agency_detail: SenderAgencyDetail,
     target_name: String,
@@ -149,6 +153,14 @@ pub struct MsgDetailResponse {
     msg_type: MsgType,
     pub invite_detail: InviteDetail,
     url_to_invite_detail: String,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, PartialOrd)]
+#[serde(rename_all = "camelCase")]
+pub struct MsgCreateResponse {
+    #[serde(rename = "@type")]
+    pub msg_type: MsgType,
+    pub uid: String,
 }
 
 impl InviteDetail {
@@ -185,7 +197,7 @@ impl SendInvite{
             to_did: String::new(),
             to_vk: String::new(),
             payload: SendInvitePayload {
-                create_payload: CreateMsgPayload { msg_type: MsgType { name: "CREATE_MSG".to_string(), ver: "1.0".to_string(), } , mtype: "connReq".to_string(), } ,
+                create_payload: CreateMsgPayload { msg_type: MsgType { name: "CREATE_MSG".to_string(), ver: "1.0".to_string(), } , mtype: "connReq".to_string(), reply_to_msg_id: None } ,
                 msg_detail_payload: SendMsgDetailPayload {
                     msg_type: MsgType { name: "MSG_DETAIL".to_string(), ver: "1.0".to_string(), } ,
                     key_proof: KeyDlgProofPayload { agent_did: String::new(), agent_delegated_key: String::new(), signature: String::new() , } ,
@@ -264,13 +276,14 @@ impl AcceptInvite{
             to_did: String::new(),
             to_vk: String::new(),
             payload: AcceptInvitePayload {
-                create_payload: CreateMsgPayload { msg_type: MsgType { name: "CREATE_MSG".to_string(), ver: "1.0".to_string(), } , mtype: "connReq".to_string(), } ,
+                create_payload: CreateMsgPayload { msg_type: MsgType { name: "CREATE_MSG".to_string(), ver: "1.0".to_string(), } , mtype: "connReqAnswer".to_string(), reply_to_msg_id: None } ,
                 msg_detail_payload: AcceptMsgDetailPayload
                 {
                     msg_type: MsgType { name: "MSG_DETAIL".to_string(), ver: "1.0".to_string(), } ,
                     key_proof: KeyDlgProofPayload { agent_did: String::new(), agent_delegated_key: String::new(), signature: String::new() , },
                     sender_detail: None,
                     sender_agency_detail: None,
+                    answer_status_code: None
                 },
                 send_payload: SendMsgPayload { msg_type: MsgType { name: "SEND_MSG".to_string(), ver: "1.0".to_string(), }, } ,
             },
@@ -303,6 +316,16 @@ impl AcceptInvite{
         self
     }
 
+    pub fn answer_status_code(&mut self, code: &str) -> &mut Self {
+        self.payload.msg_detail_payload.answer_status_code = Some(code.to_owned());
+        self
+    }
+
+    pub fn reply_to(&mut self, id: &str) -> &mut Self {
+        self.payload.create_payload.reply_to_msg_id = Some(id.to_owned());
+        self
+    }
+
     pub fn generate_signature(&mut self) -> Result<u32, u32> {
         let signature = format!("{}{}", self.payload.msg_detail_payload.key_proof.agent_did, self.payload.msg_detail_payload.key_proof.agent_delegated_key);
         let signature = crypto::sign(wallet::get_wallet_handle(), &self.to_did, signature.as_bytes())?;
@@ -311,7 +334,7 @@ impl AcceptInvite{
         Ok(error::SUCCESS.code_num)
     }
 
-    pub fn send_secure(&mut self) -> Result<Vec<String>, u32> {
+    pub fn send_secure(&mut self) -> Result<String, u32> {
         let url = format!("{}/agency/msg", settings::get_config_value(settings::CONFIG_AGENT_ENDPOINT).unwrap());
 
         let data = match self.msgpack() {
@@ -321,16 +344,13 @@ impl AcceptInvite{
 
         if settings::test_agency_mode_enabled() { httpclient::set_next_u8_response(SEND_INVITE_RESPONSE.to_vec()); }
 
-        let mut result = Vec::new();
+
         match httpclient::post_u8(&data, &url) {
             Err(_) => return Err(error::POST_MSG_FAILURE.code_num),
             Ok(response) => {
-                let response = parse_send_invite_response(response)?;
-                result.push(response);
+                parse_send_accept_response(response)
             },
-        };
-
-        Ok(result.to_owned())
+        }
     }
 }
 
@@ -410,7 +430,7 @@ impl GeneralMessage for AcceptInvite{  //INWORK
 
         let msg = bundle.encode()?;
 
-        bundle_for_agent(msg, &self.to_vk,&self.agent_did, &self.agent_vk)
+        bundle_for_agent(msg, &self.to_vk, &self.agent_did, &self.agent_vk)
     }
 }
 
@@ -436,6 +456,28 @@ fn parse_send_invite_response(response: Vec<u8>) -> Result<String, u32> {
         Ok(x) => Ok(x),
         Err(_) => Err(error::INVALID_JSON.code_num),
     }
+}
+
+
+const ACCEPT_BUNDLE_LEN: usize = 2;
+fn parse_send_accept_response(response: Vec<u8>) -> Result<String, u32> {
+    let data = unbundle_from_agency(response)?;
+
+    if data.len() !=  ACCEPT_BUNDLE_LEN{
+        error!("expected {} messages (got {})",ACCEPT_BUNDLE_LEN, data.len());
+        return Err(error::INVALID_MSGPACK.code_num);
+    }
+    debug!("create msg response: {:?}", data[0]);
+    let mut de = Deserializer::new(&data[0][..]);
+    let response: MsgCreateResponse = match Deserialize::deserialize(&mut de) {
+        Ok(x) => x,
+        Err(x) => {
+            error!("Could not parse messagepack: {}", x);
+            return Err(error::INVALID_MSGPACK.code_num)
+        },
+    };
+
+    Ok(response.uid.to_owned())
 }
 
 pub fn parse_invitation_acceptance_details(payload: Vec<u8>) -> Result<SenderDetail,u32> {

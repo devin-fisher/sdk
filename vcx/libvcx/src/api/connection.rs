@@ -5,7 +5,7 @@ use utils::cstring::CStringUtils;
 use utils::error;
 use std::ptr;
 use std::thread;
-use connection::{build_connection, connect, to_string, get_state, release, is_valid_handle, update_state, from_string, get_invite_details};
+use connection::{build_connection, build_connection_with_invite, connect, to_string, get_state, release, is_valid_handle, update_state, from_string, get_invite_details};
 
 /**
  * connection object
@@ -41,6 +41,26 @@ pub extern fn vcx_connection_create(command_handle: u32,
     error::SUCCESS.code_num
 }
 
+#[no_mangle]
+pub extern fn vcx_connection_create_with_invite(command_handle: u32,
+                                                source_id: *const c_char,
+                                                invite_details: *const c_char,
+                                                cb: Option<extern fn(xcommand_handle: u32, err: u32, claim_handle: u32)>) -> u32 {
+
+    check_useful_c_callback!(cb, error::INVALID_OPTION.code_num);
+    check_useful_c_str!(source_id, error::INVALID_OPTION.code_num);
+    check_useful_c_str!(invite_details, error::INVALID_OPTION.code_num);
+    info!("vcx create connection with invite called");
+    thread::spawn(move|| {
+        match build_connection_with_invite(source_id, invite_details) {
+            Ok(handle) => cb(command_handle, error::SUCCESS.code_num, handle),
+            Err(x) => cb(command_handle, x, 0),
+        };
+    });
+
+    error::SUCCESS.code_num
+}
+
 /// Establishes connection between Enterprise and its user
 ///
 /// #Params
@@ -63,7 +83,7 @@ pub extern fn vcx_connection_connect(command_handle:u32,
                                      cb: Option<extern fn(xcommand_handle: u32, err: u32, invite_details: *const c_char)>) -> u32 {
 
     check_useful_c_callback!(cb, error::INVALID_OPTION.code_num);
-    info!("vcx connection connect called");
+    info!("vcx connection connect called -- handle:{}", connection_handle);
 
     if !is_valid_handle(connection_handle) {
         return error::INVALID_CONNECTION_HANDLE.code_num;
@@ -250,8 +270,10 @@ pub extern fn vcx_connection_invite_details(command_handle: u32,
 
     thread::spawn(move|| {
         match get_invite_details(connection_handle, abbreviated){
-            Ok(str) => {
-                let msg = CStringUtils::string_to_cstring(str);
+            Ok(s) => {
+                let msg = CStringUtils::string_to_cstring(s);
+
+
                 cb(command_handle, error::SUCCESS.code_num, msg.as_ptr());
             },
             Err(x) => {

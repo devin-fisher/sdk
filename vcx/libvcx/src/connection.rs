@@ -55,7 +55,7 @@ struct Connection {
 
 impl Connection {
     fn _connect_send_invite(&mut self, options: Option<String>) -> Result<u32,u32> {
-        info!("\"vcx_connection_connect\" for handle {}", self.handle);
+        debug!("\"_connect_send_invite\" for handle {}", self.handle);
 
         let options_obj: ConnectionOptions = match options{
             Some(opt) => {
@@ -103,8 +103,9 @@ impl Connection {
     }
 
     fn _connect_accept_invite(&mut self, options: Option<String>) -> Result<u32,u32> {
+        debug!("\"_connect_accept_invite\" for handle {}", self.handle);
 
-        if let Some(ref details) = self.invite_detail{
+        if let Some(ref details) = self.invite_detail {
             match messages::accept_invite()
                 .to(&self.pw_did)
                 .to_vk(&self.pw_verkey)
@@ -112,6 +113,8 @@ impl Connection {
                 .agent_vk(&self.agent_vk)
                 .sender_details(&details.sender_detail)
                 .sender_agency_details(&details.sender_agency_detail)
+                .answer_status_code("MS-104")
+                .reply_to(&details.conn_req_id)
                 .send_secure() {
                 Err(_) => {
                     Err(error::POST_MSG_FAILURE.code_num)
@@ -447,16 +450,11 @@ pub fn build_connection_with_details(source_id: String, details: String) -> Resu
     set_their_pw_did(new_handle, invite_details.sender_detail.did.as_str());
     set_their_pw_verkey(new_handle, invite_details.sender_detail.verkey.as_str());
 
-    set_agent_did(new_handle, invite_details.sender_agency_detail.did.as_str());
-    set_agent_verkey(new_handle, invite_details.sender_agency_detail.verkey.as_str());
-    set_endpoint(new_handle, invite_details.sender_agency_detail.endpoint.as_str());
-
-
     set_invite_details(new_handle, invite_details);
 
     set_state(new_handle, VcxStateType::VcxStateRequestReceived);
 
-    Ok(error::SUCCESS.code_num)
+    Ok(new_handle)
 }
 
 pub fn parse_acceptance_details(handle: u32, message: &Message) -> Result<SenderDetail, u32> {
@@ -506,14 +504,21 @@ pub fn update_state(handle: u32) -> Result<u32, u32> {
         }
         Ok(response) => {
             debug!("update state response: {:?}", response);
-            for i in response {
-                if i.status_code == MessageAccepted.as_string() && i.msg_type == "connReqAnswer" {
-                    let details = parse_acceptance_details(handle, &i)?;
-                    set_their_pw_did(handle, &details.did);
-                    set_their_pw_verkey(handle, &details.verkey);
-                    set_state(handle, VcxStateType::VcxStateAccepted);
-                }
-            }
+            match get_state(handle) {
+                2 => { //VcxStateType::VcxStateOfferSent TODO IS THERE A WAY AROUND THIS?
+                    for i in response {
+                        if i.status_code == MessageAccepted.as_string() && i.msg_type == "connReqAnswer" {
+                            let details = parse_acceptance_details(handle, &i)?;
+                            set_their_pw_did(handle, &details.did);
+                            set_their_pw_verkey(handle, &details.verkey);
+                            set_state(handle, VcxStateType::VcxStateAccepted);
+                        }
+                    }
+                },
+                _ => () // We might need to handle other message conditions
+            };
+
+
             Ok(error::SUCCESS.code_num)
             //TODO: add expiration handling
         },
