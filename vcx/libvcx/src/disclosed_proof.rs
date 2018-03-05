@@ -8,6 +8,8 @@ use messages;
 use messages::GeneralMessage;
 use messages::proofs::proof_message::{ProofMessage };
 use messages::proofs::proof_request::{ ProofRequestMessage };
+use messages::extract_json_payload;
+use messages::to_u8;
 
 use claim_def::{ RetrieveClaimDef, ClaimDefCommon };
 use schema::LedgerSchema;
@@ -15,6 +17,7 @@ use schema::LedgerSchema;
 use utils::libindy::anoncreds;
 use utils::libindy::wallet;
 use utils::libindy::SigTypes;
+use utils::libindy::crypto;
 
 use utils::option_util::expect_ok_or;
 
@@ -37,8 +40,8 @@ impl Default for DisclosedProof {
             my_vk: None,
             state: VcxStateType::VcxStateNone,
             proof_request: None,
-            link_secret_alias: None,
-            proof_attributes: None,
+            link_secret_alias: Some(String::from("main")), //TODO this should not be hardcoded
+//            proof_attributes: None,
             their_did: None,
             their_vk: None,
             agent_did: None,
@@ -56,7 +59,7 @@ struct DisclosedProof {
     state: VcxStateType,
     proof_request: Option<ProofRequestMessage>,
     link_secret_alias: Option<String>,
-    proof_attributes: Option<String>,
+//    proof_attributes: Option<String>,
     their_did: Option<String>,
     their_vk: Option<String>,
     agent_did: Option<String>,
@@ -109,24 +112,42 @@ fn _match_claim(claims: &Value, id: &str) -> Option<(String, String, u32)> {
     None
 }
 
-fn claim_def_identifiers(attributes: &str, claims: &str) -> Result<Vec<(String, String, u32)>,u32>{
+fn claim_def_identifiers(claims: &str) -> Result<Vec<(String, String, String, u64)>,u32>{
     let mut rtn = Vec::new();
-
-    let attr_values: Value = serde_json::from_str(attributes)
-        .or(Err(error::INVALID_JSON.code_num))?;
 
     let claims: Value = serde_json::from_str(&claims)
         .or(Err(error::INVALID_JSON.code_num))?;
 
-    if let Value::Object(ref requested_attrs) = attr_values["requested_attrs"] {
-        for entry in requested_attrs.iter() {
-            if let Value::String(ref id) = entry.1[0]{
-                match _match_claim(&claims, id) {
-                    Some(data) => rtn.push(data.clone()),
-                    None => continue
-                }
+    if let Value::Object(ref map) = claims["attrs"] {
+        for (key, value) in map {
+            if let Value::Object(ref attr_obj) = value[0] {
+                let claim_uuid = match attr_obj["claim_uuid"] {
+                    Value::String(ref s) => s,
+                    _ => return Err(error::INVALID_JSON.code_num)
+                };
+
+                let issuer_did = match attr_obj["issuer_did"] {
+                    Value::String(ref s) => s,
+                    _ => return Err(error::INVALID_JSON.code_num)
+                };
+
+                let schema_seq_no = match attr_obj["schema_seq_no"] {
+                    Value::Number(ref n) => match n.as_u64() {
+                        Some(i) => i,
+                        None => return Err(error::INVALID_JSON.code_num)
+                    },
+                    _ => return Err(error::INVALID_JSON.code_num)
+                };
+
+                rtn.push((key.to_owned(),
+                          claim_uuid.to_owned(),
+                          issuer_did.to_owned(),
+                          schema_seq_no))
             }
         }
+    }
+    else {
+        return Err(error::INVALID_JSON.code_num);
     }
 
     Ok(rtn)
@@ -140,16 +161,17 @@ impl DisclosedProof {
     fn get_state(&self) -> u32 {self.state as u32}
     fn set_state(&mut self, state: VcxStateType) {self.state = state}
 
-    fn _find_schemas(&self, claims_identifers: &Vec<(String, String, u32)>) -> Result<String, u32> {
+    fn _find_schemas(&self, claims_identifers: &Vec<(String, String, String, u64)>) -> Result<String, u32> {
         let mut rtn = Map::new();
 
-        for entry in claims_identifers {
-            let schema = LedgerSchema::new_from_ledger(entry.2 as i32)?;
+        for &(ref attr_id, ref claim_uuid, ref issuer_did, schema_seq_num) in claims_identifers {
+            let schema = LedgerSchema::new_from_ledger(schema_seq_num as i32)?;
+            let schema = schema.data.ok_or(10 as u32)?;
 
             let schema: Value = serde_json::to_value(schema)
                 .or(Err(10 as u32))?;
 
-            rtn.insert(entry.0.to_owned(), schema);
+            rtn.insert(claim_uuid.to_owned(), schema);
         }
 
 
@@ -160,21 +182,21 @@ impl DisclosedProof {
         }
     }
 
-    fn _find_claim_def(&self, claims_identifers: &Vec<(String, String, u32)>) -> Result<String, u32> {
+    fn _find_claim_def(&self, claims_identifers: &Vec<(String, String, String, u64)>) -> Result<String, u32> {
 
         let mut rtn = Map::new();
 
-        for entry in claims_identifers {
+        for &(ref attr_id, ref claim_uuid, ref issuer_did, schema_seq_num) in claims_identifers {
             let claim_def = RetrieveClaimDef::new()
                 .retrieve_claim_def("GGBDg1j8bsKmr4h5T9XqYf",
-                                    entry.2,
+                                    schema_seq_num as u32,
                                     Some(SigTypes::CL),
-                                    &entry.1)?;
+                                    &issuer_did)?;
 
             let claim_def: Value = serde_json::from_str(&claim_def)
                 .or(Err(10 as u32))?;
 
-            rtn.insert(entry.0.to_owned(), claim_def);
+            rtn.insert(claim_uuid.to_owned(), claim_def);
         }
 
 
@@ -185,53 +207,69 @@ impl DisclosedProof {
         }
     }
 
+    fn _build_requested_claims(&self, claims_identifiers: &Vec<(String, String, String, u64)>) -> Result<String, u32> {
+        let mut rtn: Value = json!({
+              "self_attested_attributes":{},
+              "requested_attrs":{},
+              "requested_predicates":{}
+        });
+        if let Value::Object(ref mut map) = rtn["requested_attrs"] {
+            for &(ref attr_id, ref claim_uuid, ref issuer_did, schema_seq_num) in claims_identifiers {
+                let insert_val = json!([claim_uuid, true]);
+                map.insert(attr_id.to_owned(), insert_val);
+            }
+        }
+
+        let rtn = serde_json::to_string_pretty(&rtn).or(Err(error::INVALID_JSON.code_num))?;
+        Ok(rtn)
+
+    }
+
     fn _build_proof(&self) -> Result<ProofMessage, u32> {
 
         let wallet_h = wallet::get_wallet_handle();
 
-        let attributes = expect_ok_or(self.proof_attributes.as_ref(),
-                                      "Expect proof_attributes to not be None",
+//        let attributes = expect_ok_or(self.proof_attributes.as_ref(),
+//                                      "Expect proof_attributes to not be None",
+//                                      10 as u32)?;
+
+        let proof_req = expect_ok_or(self.proof_request.as_ref(),
+                                      "Expect req to not be None",
                                       10 as u32)?;
+        let proof_req_data_json = serde_json::to_string(&proof_req.proof_request_data).or(Err(10 as u32))?;
 
         let claims = anoncreds::libindy_prover_get_claims(wallet_h,
-                                                  None)?;
-        let claims_identifers = claim_def_identifiers(attributes, &claims)?;
+                                                          &proof_req_data_json)?;
 
-        let proof_req_json = match self.proof_request {
-            Some(ref r) => serde_json::to_string(r),
-            None => return Err(10 as u32)
-        }.or(Err(10 as u32))?;
+        let claims_identifiers = claim_def_identifiers(&claims)?;
+        let requested_claims = self._build_requested_claims(&claims_identifiers)?;
 
-        let proof_req_json = serde_json::to_string(
-            expect_ok_or(self.proof_request.as_ref(),
-                         "Expect proof_request to not be None",
-                         10 as u32)?
-        ).or(Err(10 as u32))?;
-
-        let schemas = self._find_schemas(&claims_identifers)?;
+        let schemas = self._find_schemas(&claims_identifiers)?;
         let master_secret = expect_ok_or(self.link_secret_alias.as_ref(),
                                          "Expect Link Secret to not be None",
                                          10 as u32)?;
-        let claim_defs_json = self._find_claim_def(&claims_identifers)?;
-        let revoc_regs_json = None;
+        let claim_defs_json = self._find_claim_def(&claims_identifiers)?;
+        let revoc_regs_json = Some("{}");
 
         let proof = anoncreds::libindy_prover_create_proof(wallet_h,
-                                                          &proof_req_json,
-                                                          attributes,
+                                                          &proof_req_data_json,
+                                                           &requested_claims,
                                                           &schemas,
                                                           master_secret,
                                                           &claim_defs_json,
                                                           revoc_regs_json)?;
 
-        serde_json::from_str(&proof)
-            .or(Err(error::UNKNOWN_LIBINDY_ERROR.code_num))
+        let proof: ProofMessage = serde_json::from_str(&proof)
+            .or(Err(error::UNKNOWN_LIBINDY_ERROR.code_num))?;
+
+        Ok(proof)
     }
 
     fn send_proof(&mut self, connection_handle: u32) -> Result<u32, u32> {
-        if self.proof_attributes.is_none(){
-            warn!("trying to send proof without setting attributes");
-            return Err(1) //TODO NEED ERROR CODE!!!
-        }
+//        if self.proof_attributes.is_none(){
+//            warn!("trying to send proof without setting attributes");
+//            return Err(1) //TODO NEED ERROR CODE!!!
+//        }
 
         info!("sending proof via connection connection: {}", connection_handle);
         self.my_did = Some(connection::get_pw_did(connection_handle)?);
@@ -258,6 +296,8 @@ impl DisclosedProof {
         let local_my_did = self.my_did.as_ref().ok_or(e_code)?;
         let local_my_vk = self.my_vk.as_ref().ok_or(e_code)?;
 
+        let proof_req = self.proof_request.as_ref().ok_or(e_code)?;
+        let ref_msg_uid = proof_req.msg_ref_id.as_ref().ok_or(e_code)?;
 
         let proof: ProofMessage = self._build_proof()?;
         let proof = serde_json::to_string(&proof).or(Err(10 as u32))?;
@@ -266,10 +306,11 @@ impl DisclosedProof {
 
         match messages::send_message().to(local_my_did)
             .to_vk(local_my_vk)
-            .msg_type("proofReq")
+            .msg_type("proof")
             .agent_did(local_agent_did)
             .agent_vk(local_agent_vk)
             .edge_agent_payload(&data)
+            .ref_msg_id(ref_msg_uid)
             .send_secure() {
             Ok(response) => {
 //                self.msg_uid = get_proof_details(&response[0])?;
@@ -279,6 +320,20 @@ impl DisclosedProof {
             Err(x) => {
                 warn!("could not send proof: {}", x);
                 return Err(x);
+            }
+        }
+    }
+
+    fn update_state(&mut self) {
+        match self.state {
+            VcxStateType::VcxStateOfferSent => {
+                //Check for messages
+            },
+            VcxStateType::VcxStateAccepted => {
+                //Check for revocation
+            }
+            _ => {
+                // NOOP there is nothing the check for a changed state
             }
         }
     }
@@ -296,12 +351,12 @@ fn handle_err(code_num: u32) -> u32 {
     }
 }
 
-pub fn create_proof(source_id: Option<String>, proof_req: String) -> Result<u32, u32> {
+pub fn create_proof(source_id: Option<String>, proof_req: &str) -> Result<u32, u32> {
     info!("creating disclosed proof with id: {}", source_id.unwrap_or("UNDEFINED".to_string()));
 
     let mut new_proof: DisclosedProof = Default::default();
 
-    new_proof.set_proof_request(serde_json::from_str(proof_req.as_str())
+    new_proof.set_proof_request(serde_json::from_str(proof_req)
         .map_err(|_|error::INVALID_JSON.code_num)?);
 
     new_proof.set_state(VcxStateType::VcxStateInitialized);
@@ -315,8 +370,12 @@ pub fn get_state(handle: u32) -> Result<u32, u32> {
     }).map_err(handle_err)
 }
 
-pub fn update_state(handle: u32) -> Result<(), u32> {
-    Ok(())
+pub fn update_state(handle: u32) -> Result<u32, u32> {
+    HANDLE_MAP.get_mut(handle, |obj|{
+        obj.update_state();
+        Ok(error::SUCCESS.code_num)
+    })
+
 }
 
 pub fn to_string(handle: u32) -> Result<String, u32> {
@@ -351,6 +410,48 @@ pub fn send_proof(handle: u32, connection_handle: u32) -> Result<u32,u32> {
     })
 }
 
+pub fn is_valid_handle(handle: u32) -> bool {
+    HANDLE_MAP.has_handle(handle)
+}
+
+//TODO one function with claim
+pub fn new_proof_requests_messages(connection_handle: u32, match_name: Option<&str>) -> Result<String, u32> {
+    let my_did = connection::get_pw_did(connection_handle)?;
+    let my_vk = connection::get_pw_verkey(connection_handle)?;
+    let agent_did = connection::get_agent_did(connection_handle)?;
+    let agent_vk = connection::get_agent_verkey(connection_handle)?;
+
+    let payload = messages::get_message::get_all_message(&my_did,
+                                                         &my_vk,
+                                                         &agent_did,
+                                                         &agent_vk)?;
+
+    let mut messages: Vec<ProofRequestMessage> = Default::default();
+
+    for msg in payload {
+        if msg.msg_type.eq("proofReq") {
+            let msg_data = match msg.payload {
+                Some(ref data) => {
+                    let data = to_u8(data);
+                    crypto::parse_msg(wallet::get_wallet_handle(), &my_vk, data.as_slice())?
+                },
+                None => return Err(10) // TODO better error
+            };
+
+            let req = extract_json_payload(&msg_data)?;
+
+            let mut req: ProofRequestMessage = serde_json::from_str(&req)
+                .or(Err(error::INVALID_JSON.code_num))?;
+
+            req.msg_ref_id = Some(msg.uid.to_owned());
+            messages.push(req);
+        }
+    }
+
+
+    Ok(serde_json::to_string_pretty(&messages).unwrap())
+}
+
 #[cfg(test)]
 mod tests {
     extern crate serde_json;
@@ -382,14 +483,14 @@ mod tests {
 
 
         let handle = create_proof(Some("id".to_string()),
-                                  build_proof_request()).unwrap();
+                                  &build_proof_request()).unwrap();
         assert_eq!(1, get_state(handle).unwrap())
     }
 
     #[test]
     fn to_string_test() {
         let handle = create_proof(Some("id".to_string()),
-                                  build_proof_request()).unwrap();
+                                  &build_proof_request()).unwrap();
 
         let serialized = to_string(handle);
         assert!(serialized.is_ok());
