@@ -428,7 +428,7 @@ pub fn build_connection(source_id: String) -> Result<u32,u32> {
     }
 }
 
-pub fn build_connection_with_details(source_id: String, details: String) -> Result<u32,u32> {
+pub fn build_connection_with_invite(source_id: String, details: String) -> Result<u32,u32> {
     let mut details = serde_json::to_value(details)
         .or(Err(error::INVALID_JSON.code_num))?;
 
