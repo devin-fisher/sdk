@@ -49,7 +49,7 @@ fn _mapped_key_rewrite<T: KeyMatch>(val: Value, context: &mut Vec<String>, remap
         while let Some(k) = keys.pop() {
             let mut value = map.remove(&k).ok_or_else(||{
                 warn!("Unexpected key value mutation");
-                error::INVALID_INVITE_DETAILS.code_num
+                error::INVALID_JSON.code_num
             })?;
 
 
