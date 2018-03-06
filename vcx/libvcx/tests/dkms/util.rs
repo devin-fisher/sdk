@@ -1,7 +1,16 @@
+extern crate serde_json;
+
 use super::actor::Actor;
 use std::env;
 use std::thread;
 use std::time;
+use serde_json::Value;
+
+use std::fs::File;
+use std::io::Write;
+use std::io::Read;
+use std::path::Path;
+use std::fs::remove_file;
 
 pub fn print_chapter(chap_name: &str, line_len: Option<usize>) {
     let line_len = line_len.unwrap_or(64);
@@ -43,8 +52,64 @@ pub fn find_actor() -> Actor{
     }
 }
 
+pub fn pr_json(val: &str) {
+    let j: Value = serde_json::from_str(val).unwrap();
+
+    println!("{}", serde_json::to_string_pretty(&j).unwrap())
+}
+
 #[allow(dead_code)]
 pub fn long_sleep() {
-    let ten_s = time::Duration::from_secs(25);
+    let ten_s = time::Duration::from_secs(15);
     thread::sleep(ten_s);
+}
+
+pub fn should_print_wait_msg(msg: &str, val: usize, threshold: usize) -> usize {
+    if val == threshold {
+        println!("{}", msg);
+        return 0;
+    }
+    else {
+        return val + 1;
+    }
+}
+
+pub fn send_via_file(data: &str, path: &Path, _timeout: Option<u32>) -> Result<(), ()> {
+    let mut f = File::create(path).unwrap();
+    let mut should_print = 0;
+    f.write_all(data.as_bytes()).or(Err(()))?;
+
+    loop {
+        if !path.exists() {
+            break;
+        }
+
+        should_print =should_print_wait_msg("waiting for invite to be taken!",
+                                            should_print,
+                                            8);
+        thread::sleep(time::Duration::from_secs(1));
+    }
+
+    Ok(())
+}
+
+
+pub fn receive_via_file(path: &Path, _timeout: Option<u32>) -> Result<String, ()> {
+    let mut should_print = 0;
+    loop {
+        if path.exists() {
+            let mut f = File::open(path).unwrap();
+            let mut rtn = String::new();
+            f.read_to_string(&mut rtn).unwrap();
+
+            remove_file(path).unwrap();
+            return Ok(rtn);
+        }
+
+        should_print =should_print_wait_msg("waiting for invite!",
+                                            should_print,
+                                            8);
+
+        thread::sleep(time::Duration::from_secs(1));
+    }
 }
