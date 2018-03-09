@@ -48,20 +48,20 @@ export class DisclosedProof extends VCXBaseWithState {
     }
   }
 
-  static async new_offers (connection: Connection) {
-    const commandHandle = 0
-    return await createFFICallbackPromise<number>(
+  static async new_requests (connection: Connection): Promise<string> {
+    return await createFFICallbackPromise<string>(
       (resolve, reject, cb) => {
-        const rc = rustAPI().vcx_disclosed_proof_new_requests(commandHandle, connection.handle, cb)
+        const rc = rustAPI().vcx_disclosed_proof_new_requests(0, connection.handle, cb)
         if (rc) {
-          resolve(StateType.None)
+          reject(rc)
         }
       },
       (resolve, reject) => Callback('void', ['uint32', 'uint32', 'string'], (handle, err, messages) => {
         if (err) {
           reject(err)
+        } else {
+          resolve(messages)
         }
-        resolve(messages)
       })
     )
   }
@@ -102,9 +102,9 @@ export class DisclosedProof extends VCXBaseWithState {
           (resolve, reject) => Callback('void', ['uint32', 'uint32'], (xcommandHandle, err) => {
             if (err) {
               reject(err)
-              return
+            } else {
+              resolve()
             }
-            resolve(xcommandHandle)
           })
         )
     } catch (err) {

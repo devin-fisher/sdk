@@ -48,20 +48,20 @@ export class Claim extends VCXBaseWithState {
     }
   }
 
-  static async new_offers (connection: Connection) {
-    const commandHandle = 0
-    return await createFFICallbackPromise<number>(
+  static async new_offers (connection: Connection): Promise<string> {
+    return await createFFICallbackPromise<string>(
       (resolve, reject, cb) => {
-        const rc = rustAPI().vcx_claim_new_offers(commandHandle, connection.handle, cb)
+        const rc = rustAPI().vcx_claim_new_offers(0, connection.handle, cb)
         if (rc) {
-          resolve(StateType.None)
+          reject(rc)
         }
       },
       (resolve, reject) => Callback('void', ['uint32', 'uint32', 'string'], (handle, err, messages) => {
         if (err) {
           reject(err)
+        } else {
+          resolve(messages)
         }
-        resolve(messages)
       })
     )
   }
