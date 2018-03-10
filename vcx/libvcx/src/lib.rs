@@ -39,7 +39,12 @@ pub mod claim_def;
 pub mod proof_compliance;
 pub mod trust_ping;
 pub mod trust_pong;
-
+pub mod request_share;
+pub mod return_share;
+pub mod trustee;
+pub mod offer_trustee;
+pub mod recovery_shares;
+pub mod backup;
 mod object_cache;
 
 pub fn create_path(s:&str) -> &Path {

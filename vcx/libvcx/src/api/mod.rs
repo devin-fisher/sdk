@@ -11,7 +11,12 @@ pub mod claim;
 pub mod disclosed_proof;
 pub mod trust_ping;
 pub mod trust_pong;
-
+pub mod request_share;
+pub mod return_share;
+pub mod trustee;
+pub mod offer_trustee;
+pub mod recovery_shares;
+pub mod backup;
 
 use std::fmt;
 

@@ -7,9 +7,6 @@ extern crate rmp_serde;
 use object_cache::ObjectCache;
 use api::VcxStateType;
 use utils::error;
-use issuer_claim::ClaimOffer;
-
-use claim_request::ClaimRequest;
 
 use messages;
 use messages::to_u8;
@@ -17,56 +14,58 @@ use messages::GeneralMessage;
 use messages::send_message::parse_msg_uid;
 use messages::extract_json_payload;
 
-use utils::libindy::anoncreds::{libindy_prover_create_and_store_claim_req, libindy_prover_store_claim};
-use utils::libindy::SigTypes;
+use messages::trustee::offer::TrusteeOffer;
+use messages::trustee::request::TrusteeRequest;
+use messages::trustee::data::TrusteeData;
+use messages::trustee::{MsgVersion, TrusteeMsgType, TrusteeCapability};
+
 use utils::libindy::wallet;
 use utils::libindy::crypto;
 
+use settings;
+
+use trust_pong::_value_from_json;
+
 use utils::option_util::expect_ok_or;
 
-use claim_def::{ RetrieveClaimDef, ClaimDefCommon };
 use connection;
 
 
 use serde_json::Value;
 
 lazy_static! {
-    static ref HANDLE_MAP: ObjectCache<Claim>  = Default::default();
+    static ref HANDLE_MAP: ObjectCache<Trustee>  = Default::default();
 }
 
 const LINK_SECRET_ALIAS: &str = "main";
 
-impl Default for Claim {
-    fn default() -> Claim
+impl Default for Trustee {
+    fn default() -> Trustee
     {
-        Claim {
+        Trustee {
             source_id: String::new(),
             state: VcxStateType::VcxStateNone,
-            claim_name: None,
-            claim_request: None,
             agent_did: None,
             agent_vk: None,
             my_did: None,
             my_vk: None,
             their_did: None,
             their_vk: None,
-            claim_offer: None,
-            link_secret_alias: Some(String::from("main")), //TODO this should not be hardcoded
             msg_uid: None,
+            trustee_offer: None,
+            trustee_data: None,
         }
     }
 }
 
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Claim {
+pub struct Trustee {
     source_id: String,
     state: VcxStateType,
-    claim_name: Option<String>,
-    claim_request: Option<ClaimRequest>,
-    claim_offer: Option<ClaimOffer>,
-    link_secret_alias: Option<String>,
     msg_uid: Option<String>,
+    trustee_offer: Option<TrusteeOffer>,
+    trustee_data: Option<TrusteeData>,
     // the following 6 are pulled from the connection object
     agent_did: Option<String>,
     agent_vk: Option<String>,
@@ -76,66 +75,32 @@ pub struct Claim {
     their_vk: Option<String>,
 }
 
-impl Claim {
+impl Trustee {
 
-    fn _find_claim_def(&self, issuer_did: &str, schema_seq_num: u32) -> Result<String, u32> {
-        RetrieveClaimDef::new()
-            .retrieve_claim_def("GGBDg1j8bsKmr4h5T9XqYf",
-                                schema_seq_num,
-                                Some(SigTypes::CL),
-                                issuer_did)
+    fn _generate_trustee_request(&self) -> Result<Value, u32> {
+        let cap = expect_ok_or(self.trustee_offer.as_ref(),
+                               "Offer must be populated",
+                               10 as u32)?;
+        let policy_key = settings::get_config_value(settings::CONFIG_AGENT_POLICY_VERKEY)?;
+
+        let cap = cap.capabilities.clone();
+        let rtn = TrusteeRequest{
+            version: MsgVersion::v0_1,
+            msg_type: TrusteeMsgType::TrusteeOffer,
+            capabilities: cap,
+            authorization_keys: vec![policy_key],
+        };
+        Ok(serde_json::to_value(&rtn).or(Err(error::INVALID_JSON.code_num))?)
     }
 
-    fn _build_request(&self, my_did: &str, their_did: &str) -> Result<ClaimRequest, u32> {
-
-
-        let wallet_h = wallet::get_wallet_handle();
-
-
-
-        let prover_did = expect_ok_or(self.my_did.as_ref(),
-                                      "",
-                                      10 as u32)?;
-        let claim_offer = expect_ok_or(self.claim_offer.as_ref(),
-                                       "",
-                                       10 as u32)?;
-
-        let claim_def = self._find_claim_def(&claim_offer.issuer_did,
-                                             claim_offer.schema_seq_no)?;
-
-        let master_secret = LINK_SECRET_ALIAS;
-
-        let claim_offer = serde_json::to_string(claim_offer).or(Err(10 as u32))?;
-
-
-        let req = libindy_prover_create_and_store_claim_req(wallet_h,
-                                                            &prover_did,
-                                                            &claim_offer,
-                                                            &claim_def,
-                                                            master_secret)?;
-
-        let mut  req : Value = serde_json::from_str(&req)
-            .or_else(|e|{
-                error!("Unable to create claim request - libindy error: {}", e);
-                Err(error::UNKNOWN_LIBINDY_ERROR.code_num)
-            })?;
-
-        if let Value::Object(ref mut map) = req {
-            map.insert(String::from("version"), Value::from("0.1"));
-            map.insert(String::from("tid"), Value::from(""));
-            map.insert(String::from("to_did"), Value::from(their_did));
-            map.insert(String::from("from_did"), Value::from(my_did));
-            map.insert(String::from("mid"), Value::from(""));
-        }
-        else {
-            warn!("Unable to create claim request -- invalid json from libindy");
-            return Err(error::UNKNOWN_LIBINDY_ERROR.code_num);
-        }
-        Ok(serde_json::from_value(req).or(Err(error::INVALID_JSON.code_num))?)
-    }
 
     fn send_request(&mut self, connection_handle: u32) -> Result<u32, u32> {
-        info!("sending claim offer via connection connection: {}", connection_handle);
+        if self.state != VcxStateType::VcxStateRequestReceived {
+            warn!("Cannot send request when not in VcxStateRequestReceived state");
+            return Err(error::INVALID_CONNECTION_STATE.code_num);
+        }
+
+        info!("sending trustee request via connection connection: {}", connection_handle);
         self.my_did = Some(connection::get_pw_did(connection_handle)?);
         self.my_vk = Some(connection::get_pw_verkey(connection_handle)?);
         self.agent_did = Some(connection::get_agent_did(connection_handle)?);
@@ -161,19 +126,29 @@ impl Claim {
         let local_my_vk = self.my_vk.as_ref().ok_or(e_code)?;
 
 
-        let req: ClaimRequest = self._build_request(local_my_did, local_their_did)?;
-        let req = serde_json::to_string(&req).or(Err(10 as u32))?;
-        let data: Vec<u8> = connection::generate_encrypted_payload(local_my_vk, local_their_vk, &req, "CLAIM_REQ")?;
-        let offer_msg_id = self.claim_offer.as_ref().unwrap().msg_ref_id.as_ref().ok_or(e_code)?;
-////        if settings::test_agency_mode_enabled() { httpclient::set_next_u8_response(SEND_CLAIM_OFFER_RESPONSE.to_vec()); }
+        let request = self._generate_trustee_request()?; //
+
+        let payload = match serde_json::to_string(&request) {
+            Ok(p) => p,
+            Err(_) => return Err(error::INVALID_JSON.code_num)
+        };
+
+        let data: Vec<u8> = connection::generate_encrypted_payload(local_my_vk, local_their_vk, &payload, "TRUSTEE_REQ")?;
+//        let offer_msg_id = _value_from_json(self.trustee_offer.as_ref(), "msg_uid", "", e_code)?;
+        let offer_msg_id = expect_ok_or(self.trustee_offer.as_ref(),
+                                        "Expect to have a offer to send request",
+                                        10 as u32)?;
+        let offer_msg_id = expect_ok_or(offer_msg_id.msg_uid.as_ref(),
+                                        "Expect offer to have a msg_uid",
+                                        10 as u32)?;
 
         match messages::send_message().to(local_my_did)
             .to_vk(local_my_vk)
-            .msg_type("claimReq")
+            .msg_type("trusteeReq")
             .agent_did(local_agent_did)
             .agent_vk(local_agent_vk)
             .edge_agent_payload(&data)
-            .ref_msg_id(offer_msg_id)
+            .ref_msg_id(&offer_msg_id)
             .send_secure() {
             Ok(response) => {
                 self.msg_uid = Some(parse_msg_uid(&response[0])?);
@@ -181,12 +156,10 @@ impl Claim {
                 return Ok(error::SUCCESS.code_num)
             },
             Err(x) => {
-                warn!("could not send proof: {}", x);
+                warn!("could not send request: {}", x);
                 return Err(x);
             }
         }
-
-
     }
 
     fn _check_msg(&mut self) -> Result<(), u32> {
@@ -205,20 +178,17 @@ impl Claim {
 
 
         for msg in payload {
-            if msg.msg_type.eq("claim") {
+            if msg.msg_type.eq("trusteeData") {
                 match msg.payload {
                     Some(ref data) => {
                         let data = to_u8(data);
                         let data = crypto::parse_msg(wallet::get_wallet_handle(), &my_vk, data.as_slice())?;
 
-                        let claim = extract_json_payload(&data)?;
-                        let claim: Value = serde_json::from_str(&claim).or(Err(10)).unwrap();
+                        let trustee = extract_json_payload(&data)?;
+                        let trustee: TrusteeData = serde_json::from_str(&trustee).or(Err(10)).unwrap();
 
-                        let wallet_h = wallet::get_wallet_handle();
-
-                        let claim = serde_json::to_string_pretty(&claim).unwrap();
-                        libindy_prover_store_claim(wallet_h, &claim)?;
-                        info!("received claim");
+                        self.trustee_data = Some(trustee);
+                        info!("received trustee");
                         self.state = VcxStateType::VcxStateAccepted;
                     },
                     None => return Err(10) // TODO better error
@@ -244,13 +214,12 @@ impl Claim {
     }
 
     fn get_state(&self) -> u32 { let state = self.state as u32; state }
-
     fn set_source_id(&mut self, id: String) {
         self.source_id = id;
     }
 
-    fn set_claim_offer(&mut self, offer: ClaimOffer){
-        self.claim_offer = Some(offer);
+    fn set_offer(&mut self, offer: TrusteeOffer) {
+        self.trustee_offer = Some(offer)
     }
 }
 
@@ -259,34 +228,34 @@ impl Claim {
 //********************************************
 fn handle_err(code_num: u32) -> u32 {
     if code_num == error::INVALID_OBJ_HANDLE.code_num {
-//        error::INVALID_CLAIM_HANDLE.code_num // TODO make a error
-        10
+        error::INVALID_OBJ_HANDLE.code_num // TODO make a error
     }
     else {
         code_num
     }
 }
 
-pub fn claim_create_with_offer(source_id: Option<String>, offer: &str) -> Result<u32, u32> {
-    let mut new_claim = _claim_create(source_id);
+pub fn trustee_create_with_offer(source_id: Option<String>, offer: &str) -> Result<u32, u32> {
+    let mut new = _create(source_id);
 
-    let offer: ClaimOffer = serde_json::from_str(offer).map_err(|_|error::INVALID_JSON.code_num)?;
-    new_claim.set_claim_offer(offer);
+    let offer: TrusteeOffer = serde_json::from_str(offer).map_err(|_|error::INVALID_JSON.code_num)?;
+    new.set_offer(offer);
 
-    info!("inserting claim into handle map");
-    Ok(HANDLE_MAP.add(new_claim)?)
+    new.state = VcxStateType::VcxStateRequestReceived;
+    info!("inserting trustee into handle map");
+    Ok(HANDLE_MAP.add(new)?)
 }
 
-fn _claim_create(source_id: Option<String>) -> Claim {
+fn _create(source_id: Option<String>) -> Trustee {
 
-    let mut new_claim: Claim = Default::default();
+    let mut new: Trustee = Default::default();
 
-    new_claim.state = VcxStateType::VcxStateInitialized;
+    new.state = VcxStateType::VcxStateInitialized;
     if let Some(s) = source_id {
-        new_claim.set_source_id(s);
+        new.set_source_id(s);
     }
 
-    new_claim
+    new
 }
 
 pub fn update_state(handle: u32) -> Result<u32, u32> {
@@ -303,13 +272,13 @@ pub fn get_state(handle: u32) -> Result<u32, u32> {
     }).map_err(handle_err)
 }
 
-pub fn send_claim_request(handle: u32, connection_handle: u32) -> Result<u32, u32> {
+pub fn send_trustee_request(handle: u32, connection_handle: u32) -> Result<u32, u32> {
     HANDLE_MAP.get_mut(handle, |obj| {
         obj.send_request(connection_handle)
     }).map_err(handle_err)
 }
 
-pub fn new_claims_offer_messages(connection_handle: u32, match_name: Option<&str>) -> Result<String, u32> {
+pub fn new_trustee_offer_messages(connection_handle: u32, match_name: Option<&str>) -> Result<String, u32> {
     let my_did = connection::get_pw_did(connection_handle)?;
     let my_vk = connection::get_pw_verkey(connection_handle)?;
     let agent_did = connection::get_agent_did(connection_handle)?;
@@ -320,10 +289,10 @@ pub fn new_claims_offer_messages(connection_handle: u32, match_name: Option<&str
                                                      &agent_did,
                                                      &agent_vk)?;
 
-    let mut messages: Vec<ClaimOffer> = Default::default();
+    let mut messages: Vec<TrusteeOffer> = Default::default();
 
     for msg in payload {
-        if msg.msg_type.eq("claimOffer") {
+        if msg.msg_type.eq("trusteeOffer") {
             let msg_data = match msg.payload {
                 Some(ref data) => {
                     let data = to_u8(data);
@@ -334,11 +303,14 @@ pub fn new_claims_offer_messages(connection_handle: u32, match_name: Option<&str
 
             let offer = extract_json_payload(&msg_data)?;
 
-            let mut offer: ClaimOffer = serde_json::from_str(&offer)
+            println!("offer: {}", offer);
+
+            let mut offer: TrusteeOffer = serde_json::from_str(&offer)
                 .or(Err(error::INVALID_JSON.code_num))?;
 
-            offer.msg_ref_id = Some(msg.uid.to_owned());
+            offer.msg_uid = Some(msg.uid);
             messages.push(offer);
+
         }
     }
 
@@ -363,13 +335,13 @@ pub fn to_string(handle: u32) -> Result<String, u32> {
     })
 }
 
-pub fn from_string(claim_data: &str) -> Result<u32, u32> {
-    let claim: Claim = match serde_json::from_str(claim_data) {
+pub fn from_string(data: &str) -> Result<u32, u32> {
+    let new: Trustee = match serde_json::from_str(data) {
         Ok(x) => x,
         Err(y) => return Err(error::INVALID_JSON.code_num),
     };
 
-    let new_handle = HANDLE_MAP.add(claim)?;
+    let new_handle = HANDLE_MAP.add(new)?;
 
     info!("inserting handle {} into proof table", new_handle);
 

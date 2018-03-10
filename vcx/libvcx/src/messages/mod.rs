@@ -9,6 +9,7 @@ pub mod send_message;
 pub mod update_profile;
 pub mod proofs;
 pub mod register;
+pub mod trustee;
 
 use std::u8;
 use settings;

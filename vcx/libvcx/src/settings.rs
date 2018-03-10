@@ -27,6 +27,9 @@ pub static CONFIG_ENABLE_TEST_MODE: &'static str = "enable_test_mode";
 pub static CONFIG_ENTERPRISE_VERKEY: &'static str = "agent_enterprise_verkey";
 pub static CONFIG_GENESIS_PATH: &str = "genesis_path";
 pub static CONFIG_WALLET_KEY: &str = "wallet_key";
+pub static CONFIG_IDENTITY_POLICY_ADDRESS: &str = "identity_policy_address";
+pub static CONFIG_AGENT_POLICY_VERKEY: &str = "agent_policy_verkey";
+pub static CONFIG_RECOVERY_VERKEY: &str = "recovery_verkey";
 pub static DEFAULT_GENESIS_PATH: &str = "/tmp/genesis.txn";
 pub static UNINITIALIZED_WALLET_KEY: &str = "<KEY_IS_NOT_SET>";
 
@@ -57,6 +60,9 @@ pub fn set_defaults() -> u32 {
     settings.set_default(CONFIG_ENTERPRISE_VERKEY,"2zoa6G7aMfX8GnUEpDxxunFHE7fZktRiiHk1vgMRH2tm");
     settings.set_default(CONFIG_GENESIS_PATH, DEFAULT_GENESIS_PATH);
     settings.set_default(CONFIG_WALLET_KEY,UNINITIALIZED_WALLET_KEY);
+    settings.set_default(CONFIG_IDENTITY_POLICY_ADDRESS, "");
+    settings.set_default(CONFIG_RECOVERY_VERKEY, "");
+    settings.set_default(CONFIG_AGENT_POLICY_VERKEY, "");
 
     error::SUCCESS.code_num
 }
