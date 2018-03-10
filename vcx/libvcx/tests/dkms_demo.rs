@@ -16,6 +16,8 @@ use std::sync::Mutex;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::time::Duration;
+use std::ops::Deref;
+use std::path::PathBuf;
 
 use serde_json::Value;
 
@@ -34,6 +36,7 @@ use dkms::constants::{DEV_GENESIS_NODE_TXNS,
 use dkms::constants;
 use dkms::actor::Actor;
 use dkms::util::{print_chapter, find_actor, pr_json, send_via_file, receive_via_file, long_sleep, should_print_wait_msg};
+use utils::wallet::wallet_file;
 
 use vcx::settings::DEFAULT_GENESIS_PATH;
 
@@ -41,25 +44,34 @@ const INVITE_CUNION_ALICE_PATH: &'static str = "/tmp/cunion-alice-invite.json";
 const INVITE_BOB_ALICE_PATH: &'static str = "/tmp/alice-bob-invite.json";
 const INVITE_ALICE_DAKOTA_PATH: &'static str = "/tmp/alice-dakota-invite.json";
 
-//lazy_static! {
-//    static ref DB: Mutex<HashMap<String, String>> = Default::default();
-//}
-//
-//fn db_put(key: String, val: String) -> Result<(),()>{
-//    match DB.lock().unwrap().insert(key, val) {
-//        Some(_) => (),
-//        None => ()
-//    }
-//
-//    Ok(())
-//}
-//
-//fn db_get(key: &str) -> Option<String> {
-//    match DB.lock().unwrap().get(key) {
-//        Some(v) => Some(v.to_owned()),
-//        None => None
-//    }
-//}
+lazy_static! {
+    static ref DB: Mutex<HashMap<String, String>> = Default::default();
+}
+
+fn db_put(key: &str, val: String) -> Result<(),()>{
+    match DB.lock().unwrap().insert(key.to_owned(), val) {
+        Some(_) => (),
+        None => ()
+    }
+
+    Ok(())
+}
+
+fn db_get(key: &str) -> Option<String> {
+    match DB.lock().unwrap().get(key) {
+        Some(v) => Some(v.to_owned()),
+        None => None
+    }
+}
+
+fn db_write_file(dir: &Path) {
+    let out = serde_json::to_string_pretty(&DB.lock().unwrap().deref()).unwrap();
+
+    let file_dir = dir.join(Path::new("DB"));
+
+    let mut f = File::create(file_dir).unwrap();
+    f.write_all(out.as_bytes()).unwrap();
+}
 
 fn print_err<T: Debug>(err: T) -> T {
     println!("ERROR: {:?}", err);
@@ -93,6 +105,8 @@ fn await_message(conn_handle: u32, msg_type: &str, func: api_caller::fn_u32_r_u3
 
         let msg = api_caller::u32_r_u32_str(conn_handle, func).unwrap();
         let msg = msg.unwrap_or(String::from("[]"));
+
+//        println!("{}", msg);
 
         if msg.contains(msg_type) {
             println!("received message of type: {}", msg_type);
@@ -159,6 +173,16 @@ fn receive_conn(other_party: &str, path: &Path) -> Result<u32, u32> {
                 None).map_err(print_err)?;
 
     Ok(handle)
+}
+
+fn prep_backup_file(actor: &Actor, actor_dir: &Path) -> String {
+    let mut rtn: Vec<PathBuf> = Vec::new();
+    db_write_file(actor_dir);
+    rtn.push(actor_dir.join("DB"));
+    rtn.push(actor_dir.join("config.json"));
+    rtn.push(wallet_file(&asset_name(actor)).unwrap());
+
+    serde_json::to_string(&rtn).unwrap()
 }
 
 fn chapter_1_demo(actor: &Actor) {
@@ -229,7 +253,9 @@ fn chapter_1_demo(actor: &Actor) {
                         vcx::api::trust_pong::vcx_trust_pong_update_state,
                         None).unwrap();
 
-            println!("Pong was send!")
+            println!("Pong was send!");
+
+            db_put("cunion_for_alice_h", format!("{}", cunion_h));
 
         },
         &Actor::CUnion => {
@@ -281,6 +307,8 @@ fn chapter_1_demo(actor: &Actor) {
                         None).unwrap();
 
             println!("Alice was Authenticated!!!!");
+
+            db_put("alice_for_cunion_h", format!("{}", alice_h));
         },
         _ => () //DOES NOT ACT IN THIS CHAPTER
     }
@@ -294,6 +322,7 @@ fn chapter_2_demo(actor: &Actor) {
             println!("ENTER ALICE");
             let invite_path = Path::new(INVITE_BOB_ALICE_PATH);
             let bob_h = send_conn("Bob", invite_path).expect("Should connect to Bob");
+            println!("Connection handle: {}", bob_h);
 
 
             println!("Look for proof requests");
@@ -322,6 +351,8 @@ fn chapter_2_demo(actor: &Actor) {
                         4, //VcxStateAccepted
                         vcx::api::disclosed_proof::vcx_disclosed_proof_update_state,
                         None).unwrap();
+
+            db_put("bob_for_alice_h", format!("{}", bob_h));
 
         },
         &Actor::Bob => {
@@ -372,6 +403,8 @@ fn chapter_2_demo(actor: &Actor) {
                                                           vcx::api::proof::vcx_get_proof).unwrap();
 
             assert_eq!(1, proof_state);
+
+            db_put("alice_for_bob_h", format!("{}", alice_h));
 
         },
         _ => () //DOES NOT ACT IN THIS CHAPTER
@@ -464,8 +497,162 @@ fn chapter_3_demo(actor: &Actor) {
     }
 }
 
-fn chapter_4_demo(actor: &Actor) {
+fn chapter_4_demo(actor: &Actor, dir_path: &Path) {
     print_chapter("CHAPTER FOUR", None);
+
+    match actor {
+        &Actor::Alice => {
+            println!("ENTER ALICE");
+
+            let bob_h: u32 = db_get("bob_for_alice_h").unwrap().parse().unwrap();
+            println!("Connection handle: {}", bob_h);
+
+            println!("Offer Trustee to Bob");
+
+
+            let recovery_h = api_caller::str_u32_u32_r_u32("bob_trustee",
+                                                   10,
+                                                   2,
+                                                   vcx::api::recovery_shares::vcx_recovery_shares_create).unwrap();
+
+            let trustee_h = api_caller::str_r_u32("bob_trustee",
+                                                   vcx::api::offer_trustee::vcx_offer_trustee_create).unwrap();
+
+            api_caller::u32_u32_r_u32(trustee_h,
+                                      bob_h,
+                                      vcx::api::offer_trustee::vcx_offer_trustee_send_offer).unwrap();
+
+            await_state(trustee_h,
+                        3, //VcxStateRequestReceived
+                        vcx::api::offer_trustee::vcx_offer_trustee_update_state,
+                        None).unwrap();
+
+            api_caller::u32_u32_u32_r_u32(trustee_h,
+                                          recovery_h,
+                                          bob_h,
+                                          vcx::api::offer_trustee::vcx_offer_trustee_send_data).unwrap();
+
+            await_state(trustee_h,
+                        4, //VcxStateAccepted
+                        vcx::api::offer_trustee::vcx_offer_trustee_update_state,
+                        None).unwrap();
+
+
+            let cunion_h: u32 = db_get("cunion_for_alice_h").unwrap().parse().unwrap();
+            println!("Connection handle: {}", cunion_h);
+
+            println!("Offer Trustee to CUnion");
+
+
+            let trustee_h = api_caller::str_r_u32("cunion_trustee",
+                                                  vcx::api::offer_trustee::vcx_offer_trustee_create).unwrap();
+
+            api_caller::u32_u32_r_u32(trustee_h,
+                                      cunion_h,
+                                      vcx::api::offer_trustee::vcx_offer_trustee_send_offer).unwrap();
+
+            await_state(trustee_h,
+                        3, //VcxStateRequestReceived
+                        vcx::api::offer_trustee::vcx_offer_trustee_update_state,
+                        None).unwrap();
+
+            api_caller::u32_u32_u32_r_u32(trustee_h,
+                                          recovery_h,
+                                          cunion_h,
+                                          vcx::api::offer_trustee::vcx_offer_trustee_send_data).unwrap();
+
+            await_state(trustee_h,
+                        4, //VcxStateAccepted
+                        vcx::api::offer_trustee::vcx_offer_trustee_update_state,
+                        None).unwrap();
+
+
+            println!("Alice backs up her wallet");
+
+            api_caller::str_r_check(&prep_backup_file(actor, dir_path), vcx::api::backup::vcx_backup_do_backup).unwrap();
+        },
+        &Actor::Bob => {
+            println!("ENTER BOB");
+
+            let alice_h: u32 = db_get("alice_for_bob_h").unwrap().parse().unwrap();
+            println!("Connection handle: {}", alice_h);
+
+
+            println!("Look for trustee offer");
+            let offers = await_message(alice_h,
+                                       "TRUSTEE_OFFER",
+                                       vcx::api::trustee::vcx_trustee_new_offers,
+                                       None).unwrap();
+
+
+
+            println!("Offers:\n{}", offers);
+
+            let offers: Value = serde_json::from_str(&offers).unwrap();
+
+            let trustee_offer = &offers[0];
+
+            let trustee_h = api_caller::str_str_r_u32("trustee",
+                                                    &serde_json::to_string(trustee_offer).unwrap(),
+                                                    vcx::api::trustee::vcx_trustee_create_with_offer).unwrap();
+
+            api_caller::u32_u32_r_u32(trustee_h,
+                                      alice_h,
+                                      vcx::api::trustee::vcx_trustee_send_request).unwrap();
+
+
+
+            println!("Look for Trustee Data");
+            await_state(trustee_h,
+                        4, //VcxStateAccepted
+                        vcx::api::trustee::vcx_trustee_update_state,
+                        None).unwrap();
+
+
+        },
+        &Actor::CUnion => {
+            println!("ENTER CUNION");
+
+            let alice_h: u32 = db_get("alice_for_cunion_h").unwrap().parse().unwrap();
+            println!("Connection handle: {}", alice_h);
+
+
+            println!("Look for trustee offer");
+            let offers = await_message(alice_h,
+                                       "TRUSTEE_OFFER",
+                                       vcx::api::trustee::vcx_trustee_new_offers,
+                                       None).unwrap();
+
+
+
+            println!("Offers:\n{}", offers);
+
+            let offers: Value = serde_json::from_str(&offers).unwrap();
+
+            let trustee_offer = &offers[0];
+
+            let trustee_h = api_caller::str_str_r_u32("trustee",
+                                                      &serde_json::to_string(trustee_offer).unwrap(),
+                                                      vcx::api::trustee::vcx_trustee_create_with_offer).unwrap();
+
+            api_caller::u32_u32_r_u32(trustee_h,
+                                      alice_h,
+                                      vcx::api::trustee::vcx_trustee_send_request).unwrap();
+
+
+
+            println!("Look for Trustee Data");
+            await_state(trustee_h,
+                        4, //VcxStateAccepted
+                        vcx::api::trustee::vcx_trustee_update_state,
+                        None).unwrap();
+        },
+        _ => () //DOES NOT ACT IN THIS CHAPTER
+    }
+}
+
+fn chapter_5_demo(actor: &Actor, dir_path: &Path) {
+    print_chapter("CHAPTER FIVE", None);
 
     match actor {
         &Actor::Alice => {
@@ -477,17 +664,10 @@ fn chapter_4_demo(actor: &Actor) {
     }
 }
 
-fn chapter_5_demo(actor: &Actor) {
-    print_chapter("CHAPTER FIVE", None);
+fn init_policy(agent_key: &str, recovery_verkey: &str) -> Result<String, u32> {
 
-    match actor {
-        &Actor::Alice => {
-            println!("ENTER ALICE");
-        },
-        &Actor::Bob => (),
-        &Actor::CUnion => (),
-        _ => () //DOES NOT ACT IN THIS CHAPTER
-    }
+
+    Ok(String::from("NOT GENERATED YET"))
 }
 
 fn init_pool() {
@@ -511,7 +691,8 @@ fn init_actor(actor: &Actor, dir: &Path) {
     ).unwrap();
     println!("Wallet Setup is done.");
 
-    let config_info = config_info(actor);
+    let actor_config = config_info(actor);
+
     let random_int: u32 = rand::random();
     let logo_url = format!("https://robohash.org/{}?set=set3", random_int);
     let wallet_name = asset_name(actor);
@@ -523,16 +704,18 @@ fn init_actor(actor: &Actor, dir: &Path) {
             "logo_url":logo_url,
             "wallet_key": "",
 
-            "agent_endpoint": config_info.agent_endpoint,
-            "agency_pairwise_did": config_info.agency_pairwise_did,
-            "agency_pairwise_verkey": config_info.agency_pairwise_verkey,
-            "enterprise_did_agent": config_info.enterprise_did_agent,
-            "agent_enterprise_verkey": config_info.agent_enterprise_verkey,
-            "enterprise_did": config_info.enterprise_did,
-            "enterprise_verkey": config_info.enterprise_verkey,
-            "agent_pairwise_did": config_info.agent_pairwise_did,
-            "agent_pairwise_verkey": config_info.agent_pairwise_verkey,
-
+            "agent_endpoint": actor_config.agent_endpoint,
+            "agency_pairwise_did": actor_config.agency_pairwise_did,
+            "agency_pairwise_verkey": actor_config.agency_pairwise_verkey,
+            "enterprise_did_agent": actor_config.enterprise_did_agent,
+            "agent_enterprise_verkey": actor_config.agent_enterprise_verkey,
+            "enterprise_did": actor_config.enterprise_did,
+            "enterprise_verkey": actor_config.enterprise_verkey,
+            "agent_pairwise_did": actor_config.agent_pairwise_did,
+            "agent_pairwise_verkey": actor_config.agent_pairwise_verkey,
+//            "identity_policy_address": config.identity_policy_address,
+            "agent_policy_verkey": actor_config.agent_policy_verkey,
+            "recovery_verkey": actor_config.recovery_verkey,
         }
     );
 
@@ -551,6 +734,14 @@ fn init_actor(actor: &Actor, dir: &Path) {
     api_caller::str_r_check(config_file_path.to_str().unwrap(), vcx::api::vcx::vcx_init).unwrap();
     thread::sleep(time::Duration::from_millis(10));
 
+    let policy_address = String::new();
+    if let &Actor::Alice = actor {
+        let policy_address = init_policy(&actor_config.agent_policy_verkey,
+                                         &actor_config.recovery_verkey).unwrap();
+
+        vcx::settings::set_config_value(vcx::settings::CONFIG_IDENTITY_POLICY_ADDRESS, &policy_address);
+    }
+
 }
 
 fn full_demo(actor: &Actor) {
@@ -564,9 +755,9 @@ fn full_demo(actor: &Actor) {
         init_actor(actor, dir_path);
         chapter_1_demo(actor);
         chapter_2_demo(actor);
-        chapter_3_demo(actor);
-        chapter_4_demo(actor);
-        chapter_5_demo(actor);
+//        chapter_3_demo(actor);
+        chapter_4_demo(actor, dir_path);
+        chapter_5_demo(actor, dir_path);
 
         print_chapter("DONE", None);
     }

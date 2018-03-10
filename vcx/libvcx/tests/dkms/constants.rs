@@ -29,6 +29,9 @@ pub struct ConfigInfo {
     pub agent_pairwise_did: String,
     pub agent_pairwise_verkey: String,
     pub agent_enterprise_verkey: String,
+    pub identity_policy_address: String,
+    pub agent_policy_verkey: String,
+    pub recovery_verkey: String,
 }
 
 
@@ -45,7 +48,9 @@ pub fn config_info(actor: &Actor) -> ConfigInfo {
                 enterprise_verkey: String::from("EUFDEw2ZoJnJh3Ni7nW7de2F9cGH8NAU9ixkAcj4Xdn7"),
                 agent_pairwise_did: String::from("D21h4rojfACty4EUH4FCQg"),
                 agent_pairwise_verkey: String::from("7YtvPnhSYfF5a6DQb9AsGKEs1eYK6uXx7nUkSAPUZdX8"),
-
+                identity_policy_address: String::from("SDFSDFSDFSDF"),
+                agent_policy_verkey: String::from("F5xT9jRfsbm3GQLcLB1SCP539debmD9mN95VoYjYF4HX"),
+                recovery_verkey: String::from("CXEbaQLPZoiLr17tKd6KkHcGjhzk8dUr4JEx82fdvN8Z"),
             }
         },
         &Actor::Bob => {
@@ -59,6 +64,9 @@ pub fn config_info(actor: &Actor) -> ConfigInfo {
                 enterprise_verkey: String::from("Gj32NuiYuaf2jyxY71f9x9siYYLggWJz8VH8aRbNg5XH"),
                 agent_pairwise_did: String::from("2zitW92wBcvPt4TCiU2UvB"),
                 agent_pairwise_verkey: String::from("265D1cR241omRUCnHiBFs1JZXvCMaLUJDqrvgSMUkXVH"),
+                identity_policy_address: String::new(),
+                agent_policy_verkey: String::from("7AkE14sGDknmzxZC63BDSkm9HmCou1Nwx5aPgh2iEeFP"),
+                recovery_verkey: String::from("At8x8WDMCrmJbxD1KWo7S51L87vFBehAfvnfMpfGcaQg"),
             }
         },
         &Actor::CUnion => {
@@ -68,10 +76,13 @@ pub fn config_info(actor: &Actor) -> ConfigInfo {
                 agency_pairwise_verkey: String::from("889k8QBcHXq3ND5LXYJDcQgUNudk2cpJrBqdsR9geKak"),
                 enterprise_did_agent: String::from("6Czcy9G2BfwyNAUuPJHTee"),
                 agent_enterprise_verkey: String::from("3qbcHPgL7LmFgZf1UYyngHBujEFqN4NGedwVUPxyqcCk"),
-                enterprise_did: String::from("WKbTGQHzYtGkiBTyzLPZnr"),
-                enterprise_verkey: String::from("Gyt8W5aAQZ6QF5Km4gwgfNyNenbLGMm5GbrYx5bXLt4t"),
+                enterprise_did: String::from("Pd4fnFtRBcMKRVC2go5w3j"),
+                enterprise_verkey: String::from("DL7uYjX8tAmGWX1uwKBuG8wWPswUx9TtcPtkMANu2nXz"),
                 agent_pairwise_did: String::from("Qy7pkD729Dj5XSeZCNMyU5"),
                 agent_pairwise_verkey: String::from("E4fMq1DV55k4FcPZCGQ68xLExF4pM4ALYtresjW8qZdx"),
+                identity_policy_address: String::new(),
+                agent_policy_verkey: String::from("C5CZ2AQLdNQPFJAWLnGWJ85BWCVCGdiGp1GCrNtHStoX"),
+                recovery_verkey: String::from("EEu1sdgWR55xsXbVoiJ8zi4v8LPbBLqpDSyAZUHUYQox"),
             }
         },
         &Actor::Dakota => {
@@ -85,6 +96,9 @@ pub fn config_info(actor: &Actor) -> ConfigInfo {
                 enterprise_verkey: String::from("EdEoAe6wgtgeeqtWksDVAWpstS5KcWqgzVGH1RkmVujN"),
                 agent_pairwise_did: String::from("PWSoWzotn79Y2BSovgubZz"),
                 agent_pairwise_verkey: String::from("DGWgmV8MgMA1ptd294thrns3mHBE9N9Nfy5okHLz8Sb9"),
+                identity_policy_address: String::new(),
+                agent_policy_verkey: String::from("EgENwWrTW5zjSkSFWqg8orK3kzwiESLmQTDY6Dt9Tajp"),
+                recovery_verkey: String::from("Ageo5PwVFdaQjSszNT9hsfPA4szCFq4sT378mfUnaNtL"),
             }
         },
     }
@@ -129,6 +143,16 @@ pub fn wallet_entries(actor: &Actor) -> &[[&str;3]] {
                     r#"{"claim":{"owner_name":["Alice Smith","62816810226936654797779705000772968058283780124309077049681734835796332704413"],"year":["2018","9580575055681116735701888307693311696919443567981152550712229354087663885817"],"owner_address":["3569 Gore Street, Avon TN 44011","19384535770851212988443221030781497988507752636414290798260257632744461817193"],"make":["Toyota","77773225235315955558310796460870215037784467515149914108705163467072509007141"],"vin":["1G1ZC5E06CF170071","101673737806105001323898372608061717291339196162267977960883483742024720265360"],"model":["Avalon","24353634147174945122309475759963277096559197779347496000626523599657091347240"]},"schema_seq_no":60,"signature":{"primary_claim":{"m2":"45958957404117505648367358814000150357753869676087912822918363518712519643231","a":"18778739794006702946179521171277315373595687285107578835178426320831733838860837382510481567095007271116914913168435554640603937508873835773291013292535003488646081587872060434522343016333764874000801026788348127693390257989236153353495275191396021723498905721833309475527550796720960825303135801260174801987427983223003830205284702730412283344695735618367401776749003842874324848898399422431906110642776735650052850473182631277577091611061721412493578822861761630484468340039190882176751548981743800556125663282778366124218885267859860918775871393199181621319713464483999741525381882822650258079170743147804957390352","e":"259344723055062059907025491480697571938277889515152306249728583105665800713306759149981690559193987143012367913206299323899696942213235956742929747120560815032865983652957581182037","v":"9653060866891869998606827892063221125366091611714992704418680346308352505820771017169955013119434880693420450129906253269406809569116785606436681461529612198079410429168918909742578748814089725565106828430429497016980360915520951246902892747937823599437349637217124405442180588025353312928503074426584233963974257610284532200881568909419880047440883256242714897032852476489498923980751643176330526279707357525472495295696343986436692659097932516045781693622728076224475419111237638485497576658426230670862262846279526963798837127047026006689232829163592474928073519409333896089522764749924669615846536753393562852931437976471325496780224805451877058888245532538621712298103227783309261882908405615606694069028561459684709140707384555118553919551314866580272817899498080946456866161246435461182293325708058766123377591087"},"non_revocation_claim":null},"issuer_did":"Niaxv2v4mPr1HdTeJkQxuU"}"#,
                     "2018-03-01 18:02:11"
                 ],
+                [
+                    "key::F5xT9jRfsbm3GQLcLB1SCP539debmD9mN95VoYjYF4HX",
+                    r#"{"verkey":"F5xT9jRfsbm3GQLcLB1SCP539debmD9mN95VoYjYF4HX","signkey":"xt19s1sp2UZCGhy9rNyb1FtxdKiDGZZPPWbEpqU41PZEyYbm9VofTjQuxHzrFQrFt3EDN9nUnpeorpNEAP9GRGm"}"#,
+                    "2018-03-08 23:37:05"
+                ],
+                [
+                    "key::CXEbaQLPZoiLr17tKd6KkHcGjhzk8dUr4JEx82fdvN8Z",
+                    r#"{"verkey":"CXEbaQLPZoiLr17tKd6KkHcGjhzk8dUr4JEx82fdvN8Z","signkey":"xt19s1sp2UZCGhy9rNyb1FtxdKiDGZZPPWbEpqU41PZVe97gcA89iRV4drh4sg311Nz3w9FbRDpz4w9QZk1TgN5"}"#,
+                    "2018-03-08 23:37:05"
+                ],
             ]
         },
         &Actor::Bob => {
@@ -152,6 +176,16 @@ pub fn wallet_entries(actor: &Actor) -> &[[&str;3]] {
                     "key::Gj32NuiYuaf2jyxY71f9x9siYYLggWJz8VH8aRbNg5XH",
                     r#"{"verkey":"Gj32NuiYuaf2jyxY71f9x9siYYLggWJz8VH8aRbNg5XH","signkey":"1GJn5t74Pq4FpxMwm7kjB4HsWSKMhbHtfUQwijLdFrjgT2sWb5yN9PjPUe9aKuky4GUNyZYgXvA8ZySfLEvugHh"}"#,
                     "2018-02-21 18:31:17"
+                ],
+                [
+                    "key::7AkE14sGDknmzxZC63BDSkm9HmCou1Nwx5aPgh2iEeFP",
+                    r#"{"verkey":"7AkE14sGDknmzxZC63BDSkm9HmCou1Nwx5aPgh2iEeFP","signkey":"xt19s1sp2UZCGhy9rNyb1FtxdKiDGZZPPWbEpqU41QpmztHi7NAuKdj6xiAwdc9UzegKyJ9NCZHLRsuZkafLEH3"}"#,
+                    "2018-03-08 23:37:05"
+                ],
+                [
+                    "key::At8x8WDMCrmJbxD1KWo7S51L87vFBehAfvnfMpfGcaQg",
+                    r#"{"verkey":"At8x8WDMCrmJbxD1KWo7S51L87vFBehAfvnfMpfGcaQg","signkey":"xt19s1sp2UZCGhy9rNyb1FtxdKiDGZZPPWbEpqU41Qq8wbPLLTrgUM2H39QQHQLfXhPQpeuQ3wbYL3W6odzE7gc"}"#,
+                    "2018-03-08 23:37:05"
                 ],
             ]
         },
@@ -197,6 +231,16 @@ pub fn wallet_entries(actor: &Actor) -> &[[&str;3]] {
                     r#"{"secret_key":{"p":"165620706875531324845648340547184433272638787597468540305938344400804913276783859956126475789452586694080216135500462698826265824228530929519756915310539765515589728658837570183276395012347296712436632524265844676253152418992104284809116307126060186637157327373538595212497515051212929698122399373985331268089","q":"167585218724351037334580037678595476872833839686732277800952761360571389584939644935118430551698244442175781736126154795956331706761166126460485859231573295191766946019622439689527658260849149838175196569482892033498652748433663215265076447840685219107992229105919000313564786075618543138061307425030353925383"},"secret_key_revocation":null}"#,
                     "2018-02-27 03:18:43"
                 ],
+                [
+                    "key::C5CZ2AQLdNQPFJAWLnGWJ85BWCVCGdiGp1GCrNtHStoX",
+                    r#"{"verkey":"C5CZ2AQLdNQPFJAWLnGWJ85BWCVCGdiGp1GCrNtHStoX","signkey":"xt19s1sp2UZCGhy9rNyb1FtxdKiDGZZPPWbEpqU41QqTMyMinQSu2isVTtKej42ioZm3PsBEF2oATUNTHHmaPKj"}"#,
+                    "2018-03-08 23:37:05"
+                ],
+                [
+                    "key::EEu1sdgWR55xsXbVoiJ8zi4v8LPbBLqpDSyAZUHUYQox",
+                    r#"{"verkey":"EEu1sdgWR55xsXbVoiJ8zi4v8LPbBLqpDSyAZUHUYQox","signkey":"xt19s1sp2UZCGhy9rNyb1FtxdKiDGZZPPWbEpqU41QqnkzC53SDUn9Dgn6jLqFxccN1v2QttAES3x8f2J7jBraS"}"#,
+                    "2018-03-08 23:37:05"
+                ],
 
             ]
         },
@@ -221,6 +265,16 @@ pub fn wallet_entries(actor: &Actor) -> &[[&str;3]] {
                     "key::EdEoAe6wgtgeeqtWksDVAWpstS5KcWqgzVGH1RkmVujN",
                     r#"{"verkey":"EdEoAe6wgtgeeqtWksDVAWpstS5KcWqgzVGH1RkmVujN","signkey":"5NQSkc4hTKqNZSz69Uzb2cyNDBCEVcQV5ybkwg9zeoySaMpWxPSY6G7KhizvpGCS7nZ2KYf6uj9BNkkYRoMWhKrx"}"#,
                     "2018-03-01 21:56:12"
+                ],
+                [
+                    "key::EgENwWrTW5zjSkSFWqg8orK3kzwiESLmQTDY6Dt9Tajp",
+                    r#"{"verkey":"EgENwWrTW5zjSkSFWqg8orK3kzwiESLmQTDY6Dt9Tajp","signkey":"xt19s1sp2UZCGhy9rNyb1FtxdKiDGZZPPWbEpqU41Qr6RdvdiMmMqnkq5iuH8pFcyQfoBcLgToUj1LMQy9Acyka"}"#,
+                    "2018-03-08 23:37:05"
+                ],
+                [
+                    "key::Ageo5PwVFdaQjSszNT9hsfPA4szCFq4sT378mfUnaNtL",
+                    r#"{"verkey":"Ageo5PwVFdaQjSszNT9hsfPA4szCFq4sT378mfUnaNtL","signkey":"xt19s1sp2UZCGhy9rNyb1FtxdKiDGZZPPWbEpqU41QrKfNiGPCPuS7Cgrx4MvU7t1HJMZJ9T4bgFeBGxLAaFj9N"}"#,
+                    "2018-03-08 23:37:05"
                 ],
             ]
         },

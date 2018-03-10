@@ -12,7 +12,7 @@ fn wallet_default_file() -> Result<PathBuf, String> {
     wallet_file("wallet1")
 }
 
-fn wallet_file(wallet_name: &str) -> Result<PathBuf, String> {
+pub fn wallet_file(wallet_name: &str) -> Result<PathBuf, String> {
     let rtn = home_dir().unwrap()
         .join(Path::new(".indy_client/wallet"))
         .join(Path::new(wallet_name))

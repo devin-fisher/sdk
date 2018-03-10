@@ -6,7 +6,7 @@ impl fmt::Display for Actor {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Actor {
     Alice,
     Bob,

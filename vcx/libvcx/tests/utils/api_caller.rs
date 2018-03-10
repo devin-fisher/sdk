@@ -10,8 +10,10 @@ use std::ffi::CString;
 use self::libc::c_char;
 
 pub type fn_str_r_u32 = extern "C" fn(u32, *const c_char, Option<extern "C" fn(u32, u32)>) -> u32;
+pub type fn_str_u32_u32_r_u32_u32 = extern "C" fn(u32, *const c_char, u32, u32, Option<extern "C" fn(u32, u32, u32)>) -> u32;
 pub type fn_u32_r_u32 = extern "C" fn(u32, u32, Option<extern "C" fn(u32, u32)>) -> u32;
 pub type fn_u32_u32_r_u32 = extern "C" fn(u32, u32, u32, Option<extern "C" fn(u32, u32)>) -> u32;
+pub type fn_u32_u32_u32_r_u32 = extern "C" fn(u32, u32, u32, u32, Option<extern "C" fn(u32, u32)>) -> u32;
 pub type fn_u32_u32_r_u32_u32_str = extern "C" fn(u32, u32, u32, Option<extern "C" fn(u32, u32, u32, *const c_char)>) -> u32;
 pub type fn_u32_r_u32_u32 = extern "C" fn(u32, u32, Option<extern "C" fn(u32, u32, u32)>) -> u32;
 pub type fn_str_str_r_u32 = extern "C" fn(u32, *const c_char, *const c_char, Option<extern "C" fn(u32, u32)>) -> u32;
@@ -43,6 +45,23 @@ pub fn str_r_u32(arg1: &str, func: fn_str_r_u32_u32) -> Result<u32, u32> {
     let arg1 = CString::new(arg1).unwrap();
     let rc = func(rtn_obj.command_handle,
                   arg1.as_ptr(),
+                  Some(rtn_obj.get_callback()));
+
+    if rc != 0 {
+        return Err(rc);
+    }
+
+    rtn_obj.receive(TimeoutUtils::some_short())
+}
+
+pub fn str_u32_u32_r_u32(arg1: &str, arg2: u32, arg3: u32, func: fn_str_u32_u32_r_u32_u32) -> Result<u32, u32> {
+    let rtn_obj = return_types_u32::Return_U32_U32::new()?;
+
+    let arg1 = CString::new(arg1).unwrap();
+    let rc = func(rtn_obj.command_handle,
+                  arg1.as_ptr(),
+                  arg2,
+                  arg3,
                   Some(rtn_obj.get_callback()));
 
     if rc != 0 {
@@ -169,6 +188,22 @@ pub fn u32_u32_r_u32(arg1: u32, arg2: u32, func: fn_u32_u32_r_u32) -> Result<(),
     let rc = func(rtn_obj.command_handle,
                   arg1,
                   arg2,
+                  Some(rtn_obj.get_callback()));
+
+    if rc != 0 {
+        return Err(rc);
+    }
+
+    rtn_obj.receive(TimeoutUtils::some_medium())
+}
+
+pub fn u32_u32_u32_r_u32(arg1: u32, arg2: u32, arg3: u32, func: fn_u32_u32_u32_r_u32) -> Result<(), u32> {
+    let rtn_obj = return_types_u32::Return_U32::new()?;
+
+    let rc = func(rtn_obj.command_handle,
+                  arg1,
+                  arg2,
+                  arg3,
                   Some(rtn_obj.get_callback()));
 
     if rc != 0 {
