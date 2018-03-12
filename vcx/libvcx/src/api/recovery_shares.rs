@@ -4,7 +4,6 @@ use self::libc::c_char;
 use utils::cstring::CStringUtils;
 use utils::error;
 use recovery_shares;
-use connection;
 use std::thread;
 use std::ptr;
 
@@ -35,6 +34,9 @@ pub extern fn vcx_recovery_shares_create(command_handle: u32,
 
     error::SUCCESS.code_num
 }
+
+
+
 
 ///
 #[no_mangle]
@@ -98,6 +100,6 @@ pub extern fn vcx_recovery_shares_release(handle: u32) -> u32 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+//    use super::*;
 
 }

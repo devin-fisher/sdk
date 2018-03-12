@@ -11,5 +11,6 @@ pub enum Actor {
     Alice,
     Bob,
     CUnion,
-    Dakota
+    Dakota,
+    Alice_New
 }

@@ -18,7 +18,6 @@ use messages::trustee::request::TrusteeRequest;
 use messages::trustee::data::{TrusteeData, RecoveryShare, RecoveryShareHint};
 use connection;
 use serde_json::Value;
-use serde::Deserializer;
 use settings;
 use recovery_shares;
 use utils::option_util::expect_ok_or;
@@ -354,7 +353,7 @@ pub fn send_trustee_data(handle: u32, recovery_shares: u32, connection_handle: u
 
 #[cfg(test)]
 pub mod tests {
-    use super::*;
+//    use super::*;
 
 
 }

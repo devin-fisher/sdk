@@ -7,19 +7,8 @@ extern crate rmp_serde;
 use object_cache::ObjectCache;
 use utils::error;
 
-
-//use utils::libindy::wallet;
-//use utils::libindy::crypto;
-
-
-use trust_pong::_value_from_json;
-
-use utils::option_util::expect_ok_or;
-
 use std::sync::Mutex;
 
-
-use serde_json::Value;
 use rand::Rng;
 
 lazy_static! {

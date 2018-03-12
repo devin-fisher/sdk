@@ -43,6 +43,7 @@ pub fn find_actor() -> Actor{
                 "bob" => Actor::Bob,
                 "cunion" => Actor::CUnion,
                 "dakota" => Actor::Dakota,
+                "alice_new" => Actor::Alice_New,
                 _ => panic!("Actor '{}' is not a valid option", actor)
             }
         },

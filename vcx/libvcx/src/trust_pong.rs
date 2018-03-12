@@ -272,7 +272,7 @@ pub fn new_ping_messages(connection_handle: u32, match_name: Option<&str>) -> Re
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+//    use super::*;
 
 
     #[test]

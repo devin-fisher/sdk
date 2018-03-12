@@ -5,7 +5,6 @@ use utils::cstring::CStringUtils;
 use utils::error;
 use connection;
 use recovery_shares;
-use settings;
 use offer_trustee;
 use std::thread;
 use std::ptr;
@@ -200,6 +199,6 @@ pub extern fn vcx_offer_trustee_release(handle: u32) -> u32 { offer_trustee::rel
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+//    use super::*;
 
 }

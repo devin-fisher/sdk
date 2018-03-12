@@ -59,6 +59,7 @@ pub static WALLET_ALREADY_OPEN: Error = Error{code_num: 1048, message: "Indy wal
 pub static INVALID_OBJ_HANDLE: Error = Error{code_num: 1049, message: "Obj was not found with handle"};
 pub static INVALID_DISCLOSED_PROOF_HANDLE: Error = Error{code_num: 1050, message: "Obj was not found with handle"};
 pub static SERIALIZATION_ERROR: Error = Error{code_num: 1051, message: "Unable to serialize"};
+pub static INVALID_STATE_ERROR: Error = Error{code_num: 1052, message: "Current state does not allow this operation"};
 
 lazy_static! {
     static ref ERROR_MESSAGES: HashMap<u32, &'static str> = {
@@ -115,6 +116,7 @@ lazy_static! {
         insert_message(&mut m, &INVALID_OBJ_HANDLE);
         insert_message(&mut m, &INVALID_DISCLOSED_PROOF_HANDLE);
         insert_message(&mut m, &SERIALIZATION_ERROR);
+        insert_message(&mut m, &INVALID_STATE_ERROR);
         m
     };
 }
@@ -371,5 +373,10 @@ mod tests {
     #[test]
     fn test_serialization_error() {
         assert_eq!(error_message(&SERIALIZATION_ERROR.code_num), SERIALIZATION_ERROR.message);
+    }
+
+    #[test]
+    fn test_state_error() {
+        assert_eq!(error_message(&INVALID_STATE_ERROR.code_num), INVALID_STATE_ERROR.message);
     }
 }

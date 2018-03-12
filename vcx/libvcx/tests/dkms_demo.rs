@@ -35,7 +35,7 @@ use dkms::constants::{DEV_GENESIS_NODE_TXNS,
                       ACCOUNT_CERT_DID};
 use dkms::constants;
 use dkms::actor::Actor;
-use dkms::util::{print_chapter, find_actor, pr_json, send_via_file, receive_via_file, long_sleep, should_print_wait_msg};
+use dkms::util::{print_chapter, find_actor, pr_json, send_via_file, receive_via_file, should_print_wait_msg};
 use utils::wallet::wallet_file;
 
 use vcx::settings::DEFAULT_GENESIS_PATH;
@@ -43,6 +43,9 @@ use vcx::settings::DEFAULT_GENESIS_PATH;
 const INVITE_CUNION_ALICE_PATH: &'static str = "/tmp/cunion-alice-invite.json";
 const INVITE_BOB_ALICE_PATH: &'static str = "/tmp/alice-bob-invite.json";
 const INVITE_ALICE_DAKOTA_PATH: &'static str = "/tmp/alice-dakota-invite.json";
+
+const INVITE_RECOVERY_BOB_ALICE_PATH: &'static str = "/tmp/recovery-alice-bob-invite.json";
+const INVITE_RECOVERY_CUNION_ALICE_PATH: &'static str = "/tmp/recovery-alice-cunion-invite.json";
 
 lazy_static! {
     static ref DB: Mutex<HashMap<String, String>> = Default::default();
@@ -398,7 +401,7 @@ fn chapter_2_demo(actor: &Actor) {
                         vcx::api::proof::vcx_proof_update_state,
                         None).unwrap();
 
-            let (proof_state, attrs) = api_caller::u32_u32_r_u32_str(proof_h,
+            let (proof_state, _attrs) = api_caller::u32_u32_r_u32_str(proof_h,
                                                           alice_h,
                                                           vcx::api::proof::vcx_get_proof).unwrap();
 
@@ -596,6 +599,8 @@ fn chapter_4_demo(actor: &Actor, dir_path: &Path) {
                                                     &serde_json::to_string(trustee_offer).unwrap(),
                                                     vcx::api::trustee::vcx_trustee_create_with_offer).unwrap();
 
+            println!("Trustee handle: {}", trustee_h);
+
             api_caller::u32_u32_r_u32(trustee_h,
                                       alice_h,
                                       vcx::api::trustee::vcx_trustee_send_request).unwrap();
@@ -608,6 +613,7 @@ fn chapter_4_demo(actor: &Actor, dir_path: &Path) {
                         vcx::api::trustee::vcx_trustee_update_state,
                         None).unwrap();
 
+            db_put("trustee_handle", format!("{}", trustee_h));
 
         },
         &Actor::CUnion => {
@@ -635,6 +641,8 @@ fn chapter_4_demo(actor: &Actor, dir_path: &Path) {
                                                       &serde_json::to_string(trustee_offer).unwrap(),
                                                       vcx::api::trustee::vcx_trustee_create_with_offer).unwrap();
 
+            println!("Trustee handle: {}", trustee_h);
+
             api_caller::u32_u32_r_u32(trustee_h,
                                       alice_h,
                                       vcx::api::trustee::vcx_trustee_send_request).unwrap();
@@ -646,6 +654,8 @@ fn chapter_4_demo(actor: &Actor, dir_path: &Path) {
                         4, //VcxStateAccepted
                         vcx::api::trustee::vcx_trustee_update_state,
                         None).unwrap();
+
+            db_put("trustee_handle", format!("{}", trustee_h));
         },
         _ => () //DOES NOT ACT IN THIS CHAPTER
     }
@@ -655,16 +665,152 @@ fn chapter_5_demo(actor: &Actor, dir_path: &Path) {
     print_chapter("CHAPTER FIVE", None);
 
     match actor {
-        &Actor::Alice => {
-            println!("ENTER ALICE");
+        &Actor::Alice_New => {
+            println!("ENTER ALICE's New Agent");
+
+            println!("Recovery Connection with Bob:");
+            let invite_path = Path::new(INVITE_RECOVERY_BOB_ALICE_PATH);
+            let recovery_bob_h = receive_conn("Bob", invite_path).expect("Should connect to Bob");
+            println!("Connection handle: {}", recovery_bob_h);
+
+            println!("Requesting Share from Bob");
+
+
+            let share_from_bob_h = api_caller::str_r_u32("recovery_share_BOB",
+                                                vcx::api::request_share::vcx_request_share_create).unwrap();
+
+            println!("Recovery Share Handle: {}", share_from_bob_h);
+
+
+            api_caller::u32_u32_r_u32(share_from_bob_h,
+                                      recovery_bob_h,
+                                      vcx::api::request_share::vcx_request_share_send_request).unwrap();
+
+            await_state(share_from_bob_h,
+                        4, //VcxStateAccepted
+                        vcx::api::request_share::vcx_request_share_update_state,
+                        None).unwrap();
+
+            println!("Recovery Connection with Cunion:");
+            let invite_path = Path::new(INVITE_RECOVERY_CUNION_ALICE_PATH);
+            let recovery_cunion_h = receive_conn("CUNION", invite_path).expect("Should connect to CUNION");
+            println!("Connection handle: {}", recovery_cunion_h);
+
+            println!("Requesting Share from Cunion");
+
+
+            let share_from_cunion_h = api_caller::str_r_u32("recovery_share_CUNION",
+                                                   vcx::api::request_share::vcx_request_share_create).unwrap();
+
+            println!("Recovery Share Handle: {}", share_from_cunion_h);
+
+
+            api_caller::u32_u32_r_u32(share_from_cunion_h,
+                                      recovery_cunion_h,
+                                      vcx::api::request_share::vcx_request_share_send_request).unwrap();
+
+            await_state(share_from_cunion_h,
+                        4, //VcxStateAccepted
+                        vcx::api::request_share::vcx_request_share_update_state,
+                        None).unwrap();
+
+
+            let shares_handles = serde_json::to_string(&vec![share_from_bob_h, share_from_cunion_h]).unwrap();
+
+            api_caller::str_r_check(&shares_handles,
+                                    vcx::api::backup::vcx_backup_do_restore).unwrap();
         },
-        &Actor::Bob => (),
-        &Actor::CUnion => (),
+        &Actor::Bob => {
+            println!("ENTER BOB");
+
+            let trustee_h: u32 = db_get("trustee_handle").unwrap().parse().unwrap();
+            println!("Trustee handle: {}", trustee_h);
+
+
+            println!("Having been contacted by Alice, Bob revokes Alice's phone");
+
+            api_caller::u32_str_r_u32(trustee_h,
+                                          "asdfasdfasdf",
+                                          vcx::api::trustee::vcx_trustee_revoke_device).unwrap();
+
+
+            let invite_path = Path::new(INVITE_RECOVERY_BOB_ALICE_PATH);
+            let recovery_alice_h = send_conn("Alice", invite_path).expect("Should connect to Alice");
+            println!("Connection handle: {}", recovery_alice_h);
+
+
+            println!("Look for return share requests");
+            let req = await_message(recovery_alice_h,
+                                    "REQUEST_SHARE",
+                                    vcx::api::return_share::vcx_return_share_new_pings,
+                                    None).unwrap();
+
+            println!("Requests:\n{}", req);
+
+            let req: Value = serde_json::from_str(&req).unwrap();
+
+            let proof_req = &req[0];
+
+            let return_share_h = api_caller::str_str_r_u32("alice_share_returned",
+                                                    &serde_json::to_string(proof_req).unwrap(),
+                                                    vcx::api::return_share::vcx_return_share_create_with_request).unwrap();
+
+            println!("Proof Handle: {}", return_share_h);
+
+            api_caller::u32_u32_u32_r_u32(return_share_h,
+                                      recovery_alice_h,
+                                      trustee_h,
+                                      vcx::api::return_share::vcx_return_share_send_share).unwrap();
+
+            await_state(return_share_h,
+                        4, //VcxStateAccepted
+                        vcx::api::return_share::vcx_return_share_update_state,
+                        None).unwrap();
+        },
+        &Actor::CUnion => {
+            println!("ENTER CUNION");
+
+            let trustee_h: u32 = db_get("trustee_handle").unwrap().parse().unwrap();
+            println!("Trustee handle: {}", trustee_h);
+
+            let invite_path = Path::new(INVITE_RECOVERY_CUNION_ALICE_PATH);
+            let recovery_alice_h = send_conn("Alice", invite_path).expect("Should connect to Alice");
+            println!("Connection handle: {}", recovery_alice_h);
+
+
+            println!("Look for return share requests");
+            let req = await_message(recovery_alice_h,
+                                    "REQUEST_SHARE",
+                                    vcx::api::return_share::vcx_return_share_new_pings,
+                                    None).unwrap();
+
+            println!("Requests:\n{}", req);
+
+            let req: Value = serde_json::from_str(&req).unwrap();
+
+            let proof_req = &req[0];
+
+            let return_share_h = api_caller::str_str_r_u32("alice_share_returned",
+                                                           &serde_json::to_string(proof_req).unwrap(),
+                                                           vcx::api::return_share::vcx_return_share_create_with_request).unwrap();
+
+            println!("Proof Handle: {}", return_share_h);
+
+            api_caller::u32_u32_u32_r_u32(return_share_h,
+                                      recovery_alice_h,
+                                      trustee_h,
+                                      vcx::api::return_share::vcx_return_share_send_share).unwrap();
+
+            await_state(return_share_h,
+                        4, //VcxStateAccepted
+                        vcx::api::return_share::vcx_return_share_update_state,
+                        None).unwrap();
+        },
         _ => () //DOES NOT ACT IN THIS CHAPTER
     }
 }
 
-fn init_policy(agent_key: &str, recovery_verkey: &str) -> Result<String, u32> {
+fn init_policy(_agent_key: &str, _recovery_verkey: &str) -> Result<String, u32> {
 
 
     Ok(String::from("NOT GENERATED YET"))
@@ -734,7 +880,7 @@ fn init_actor(actor: &Actor, dir: &Path) {
     api_caller::str_r_check(config_file_path.to_str().unwrap(), vcx::api::vcx::vcx_init).unwrap();
     thread::sleep(time::Duration::from_millis(10));
 
-    let policy_address = String::new();
+
     if let &Actor::Alice = actor {
         let policy_address = init_policy(&actor_config.agent_policy_verkey,
                                          &actor_config.recovery_verkey).unwrap();

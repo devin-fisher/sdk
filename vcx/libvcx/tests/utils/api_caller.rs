@@ -19,6 +19,7 @@ pub type fn_u32_r_u32_u32 = extern "C" fn(u32, u32, Option<extern "C" fn(u32, u3
 pub type fn_str_str_r_u32 = extern "C" fn(u32, *const c_char, *const c_char, Option<extern "C" fn(u32, u32)>) -> u32;
 pub type fn_str_str_r_u32_u32 = extern "C" fn(u32, *const c_char, *const c_char, Option<extern "C" fn(u32, u32, u32)>) -> u32;
 pub type fn_str_r_u32_u32 = extern "C" fn(u32, *const c_char, Option<extern "C" fn(u32, u32, u32)>) -> u32;
+pub type fn_u32_str_r_u32 = extern "C" fn(u32, u32, *const c_char, Option<extern "C" fn(u32, u32)>) -> u32;
 pub type fn_u32_str_r_u32_str = extern "C" fn(u32, u32, *const c_char, Option<extern "C" fn(u32, u32, *const c_char)>) -> u32;
 pub type fn_u32_r_u32_str = extern "C" fn(u32, u32, Option<extern "C" fn(u32, u32, *const c_char)>) -> u32;
 pub type fn_str_u32_str_str_str_r_u32_u32 = extern "C" fn(u32, *const c_char, u32, *const c_char, *const c_char, *const c_char, Option<extern "C" fn(u32, u32, u32)>) -> u32;
@@ -69,6 +70,20 @@ pub fn str_u32_u32_r_u32(arg1: &str, arg2: u32, arg3: u32, func: fn_str_u32_u32_
     }
 
     rtn_obj.receive(TimeoutUtils::some_short())
+}
+
+pub fn u32_str_r_u32(arg1: u32, arg2: &str, func: fn_u32_str_r_u32) -> Result<(), u32> {
+    let rtn_obj = return_types_u32::Return_U32::new()?;
+
+    let arg2 = CString::new(arg2).unwrap();
+    let rc = func(rtn_obj.command_handle, arg1,
+                  arg2.as_ptr(),
+                  Some(rtn_obj.get_callback()));
+    if rc != 0 {
+        return Err(rc);
+    }
+
+    rtn_obj.receive(TimeoutUtils::some_long())
 }
 
 pub fn u32_str_r_u32_str(arg1: u32, arg2: &str, func: fn_u32_str_r_u32_str) -> Result<Option<String>, u32> {

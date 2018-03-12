@@ -4,19 +4,26 @@ use object_cache::ObjectCache;
 use api::{ VcxStateType };
 use utils::error;
 use connection;
+use trustee;
 use messages;
 use messages::GeneralMessage;
 use messages::extract_json_payload;
 use messages::to_u8;
+use messages::trustee::data::RecoveryShare;
 
 use utils::libindy::wallet;
 use utils::libindy::crypto;
 
 use utils::option_util::expect_ok_or;
 
-use serde_json::Value;
+use request_share::RequestShareMsg;
 
-
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ReturnShareMsg {
+    pub msg_type: String,
+    pub version: String,
+    pub share: RecoveryShare,
+}
 
 lazy_static! {
     static ref HANDLE_MAP: ObjectCache<ReturnShare>  = Default::default();
@@ -30,7 +37,7 @@ impl Default for ReturnShare {
             msg_uid: None,
             my_did: None,
             my_vk: None,
-            ping: None,
+            request: None,
             state: VcxStateType::VcxStateNone,
             their_did: None,
             their_vk: None,
@@ -40,22 +47,7 @@ impl Default for ReturnShare {
     }
 }
 
-fn _value_from_json(value: Option<&Value>, key: &str, none_warning: &str, error_val: u32)
-                    -> Result<String, u32> {
 
-    let rtn = expect_ok_or(value,
-                           none_warning,
-                           error_val)?;
-    let rtn = expect_ok_or(rtn.get(key),
-                           none_warning,
-                           error_val)?;
-
-    match rtn {
-        &Value::String(ref s) => Ok(s.to_owned()),
-        _ => Err(error::INVALID_JSON.code_num)
-    }
-
-}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct ReturnShare {
@@ -63,7 +55,7 @@ struct ReturnShare {
     msg_uid: Option<String>,
     my_did: Option<String>,
     my_vk: Option<String>,
-    ping: Option<Value>,
+    request: Option<RequestShareMsg>,
     state: VcxStateType,
     their_did: Option<String>,
     their_vk: Option<String>,
@@ -76,7 +68,7 @@ impl ReturnShare {
     fn get_state(&self) -> u32 {self.state as u32}
     fn set_state(&mut self, state: VcxStateType) {self.state = state}
 
-    fn send_share(&mut self, connection_handle: u32) -> Result<u32, u32> {
+    fn send_share(&mut self, connection_handle: u32, trustee_handle: u32) -> Result<u32, u32> {
 
         info!("sending share via connection connection: {}", connection_handle);
         self.my_did = Some(connection::get_pw_did(connection_handle)?);
@@ -104,12 +96,20 @@ impl ReturnShare {
         let local_my_vk = self.my_vk.as_ref().ok_or(e_code)?;
 
 //        msg_uid
-        let ref_msg_uid = _value_from_json(self.ping.as_ref(), "msg_uid", "", e_code)?;
-        let nonce = _value_from_json(self.ping.as_ref(), "nonce", "", e_code)?;
+        let ref_msg_uid = expect_ok_or(self.request.as_ref(), "", 10 as u32)?;
+        let ref_msg_uid = expect_ok_or(ref_msg_uid.msg_uid.as_ref(), "", 10 as u32)?;
 
-        let share = json!({"nonce": nonce, "msg_type": "SHARE"});
+        let share = trustee::get_share(trustee_handle)?;
+
+        let share = ReturnShareMsg{
+            msg_type: String::from("RETURN_SHARE"),
+            version: String::from("0.1"),
+            share,
+        };
+
+
         let share = serde_json::to_string(&share).or(Err(e_code))?;
-        let data: Vec<u8> = connection::generate_encrypted_payload(local_my_vk, local_their_vk, &share, "SHARE")?;
+        let data: Vec<u8> = connection::generate_encrypted_payload(local_my_vk, local_their_vk, &share, "RETURN_SHARE")?;
 //        if settings::test_agency_mode_enabled() { httpclient::set_next_u8_response(SEND_CLAIM_OFFER_RESPONSE.to_vec()); }
 
         match messages::send_message().to(local_my_did)
@@ -158,15 +158,15 @@ fn handle_err(code_num: u32) -> u32 {
         }
 }
 
-pub fn create_return_share(source_id: Option<String>, ping: &str) -> Result<u32, u32> {
+pub fn create_return_share(source_id: Option<String>, request: &str) -> Result<u32, u32> {
     info!("creating return share with id: {}", source_id.unwrap_or("UNDEFINED".to_string()));
 
     let mut new_obj: ReturnShare = Default::default();
 
-    let ping = serde_json::from_str(ping)
+    let request = serde_json::from_str(request)
         .map_err(|_|error::INVALID_JSON.code_num)?;
 
-    new_obj.ping = Some(ping);
+    new_obj.request = Some(request);
 
     new_obj.set_state(VcxStateType::VcxStateInitialized);
 
@@ -213,9 +213,9 @@ pub fn release(handle: u32) -> Result<(), u32> {
     HANDLE_MAP.release(handle).map_err(handle_err)
 }
 
-pub fn send_share(handle: u32, connection_handle: u32) -> Result<u32,u32> {
+pub fn send_share(handle: u32, connection_handle: u32, trustee_handle: u32) -> Result<u32,u32> {
     HANDLE_MAP.get_mut(handle, |obj|{
-        obj.send_share(connection_handle)
+        obj.send_share(connection_handle, trustee_handle)
     })
 }
 
@@ -235,10 +235,10 @@ pub fn new_ping_messages(connection_handle: u32, match_name: Option<&str>) -> Re
                                                          &agent_did,
                                                          &agent_vk)?;
 
-    let mut messages: Vec<Value> = Default::default();
+    let mut messages: Vec<RequestShareMsg> = Default::default();
 
     for msg in payload {
-        if msg.msg_type.eq("trustPing") {
+        if msg.msg_type.eq("requestShare") {
             let msg_data = match msg.payload {
                 Some(ref data) => {
                     let data = to_u8(data);
@@ -251,17 +251,12 @@ pub fn new_ping_messages(connection_handle: u32, match_name: Option<&str>) -> Re
 
             println!("{:?}", req);
 
-            let mut req: Value = serde_json::from_str(&req)
+            let mut req: RequestShareMsg = serde_json::from_str(&req)
                 .or(Err(error::INVALID_JSON.code_num))?;
 
-            if let Value::Object(ref mut map) = req {
-                let uid = json!(msg.uid);
-                map.insert(String::from("msg_uid"), uid);
-            }
+            req.msg_uid = Some(msg.uid.to_owned());
 
-            if req.is_object() {
-                messages.push(req);
-            }
+            messages.push(req);
 
         }
     }
@@ -272,7 +267,7 @@ pub fn new_ping_messages(connection_handle: u32, match_name: Option<&str>) -> Re
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+//    use super::*;
 
 
     #[test]

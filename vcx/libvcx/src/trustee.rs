@@ -16,15 +16,13 @@ use messages::extract_json_payload;
 
 use messages::trustee::offer::TrusteeOffer;
 use messages::trustee::request::TrusteeRequest;
-use messages::trustee::data::TrusteeData;
-use messages::trustee::{MsgVersion, TrusteeMsgType, TrusteeCapability};
+use messages::trustee::data::{TrusteeData, RecoveryShare};
+use messages::trustee::{MsgVersion, TrusteeMsgType};
 
 use utils::libindy::wallet;
 use utils::libindy::crypto;
 
 use settings;
-
-use trust_pong::_value_from_json;
 
 use utils::option_util::expect_ok_or;
 
@@ -221,6 +219,21 @@ impl Trustee {
     fn set_offer(&mut self, offer: TrusteeOffer) {
         self.trustee_offer = Some(offer)
     }
+
+    fn get_share(&self) -> Result<RecoveryShare, u32> {
+        match self.state {
+            VcxStateType::VcxStateAccepted => {
+                let trustee_data = expect_ok_or(self.trustee_data.as_ref(),
+                                                "Expect trustee Data is populated",
+                                                error::INVALID_OPTION.code_num)?;
+                let share = trustee_data.share.clone();
+                Ok(share)
+            },
+            _ => {
+                Err(error::INVALID_STATE_ERROR.code_num)
+            }
+        }
+    }
 }
 
 //********************************************
@@ -272,9 +285,28 @@ pub fn get_state(handle: u32) -> Result<u32, u32> {
     }).map_err(handle_err)
 }
 
+pub fn list_agents(handle: u32) -> Result<String, u32> {
+    HANDLE_MAP.get_mut(handle, |obj| {
+        Ok(String::from("[]")) // TODO get device list
+    }).map_err(handle_err)
+}
+
+pub fn revoke_key(handle: u32, agent_verkey: &str) -> Result<u32, u32> {
+    HANDLE_MAP.get_mut(handle, |obj| {
+        Ok(error::SUCCESS.code_num) // TODO revoke agent
+    }).map_err(handle_err)
+}
+
+
 pub fn send_trustee_request(handle: u32, connection_handle: u32) -> Result<u32, u32> {
     HANDLE_MAP.get_mut(handle, |obj| {
         obj.send_request(connection_handle)
+    }).map_err(handle_err)
+}
+
+pub fn get_share(handle: u32) -> Result<RecoveryShare, u32> {
+    HANDLE_MAP.get(handle, |obj| {
+        obj.get_share()
     }).map_err(handle_err)
 }
 

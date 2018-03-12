@@ -4,6 +4,7 @@ use self::libc::c_char;
 use utils::cstring::CStringUtils;
 use utils::error;
 use connection;
+use trustee;
 use return_share;
 use std::thread;
 use std::ptr;
@@ -37,25 +38,28 @@ pub extern fn vcx_return_share_create_with_request(command_handle: u32,
 
 ///
 #[no_mangle]
-pub extern fn vcx_return_share_send_proof(command_handle: u32,
+pub extern fn vcx_return_share_send_share(command_handle: u32,
                                           handle: u32,
                                           connection_handle: u32,
+                                          trustee_handle: u32,
                                           cb: Option<extern fn(xcommand_handle: u32, err: u32)>) -> u32 {
 
     check_useful_c_callback!(cb, error::INVALID_OPTION.code_num);
 
     if !return_share::is_valid_handle(handle) {
-        return error::INVALID_ISSUER_CLAIM_HANDLE.code_num;
+        return error::INVALID_OBJ_HANDLE.code_num;
     }
 
     if !connection::is_valid_handle(connection_handle) {
         return error::INVALID_CONNECTION_HANDLE.code_num;
     }
 
-
+    if !trustee::is_valid_handle(trustee_handle) {
+        return error::INVALID_OBJ_HANDLE.code_num;
+    }
 
     thread::spawn(move|| {
-        let err = match return_share::send_share(handle, connection_handle) {
+        let err = match return_share::send_share(handle, connection_handle, trustee_handle) {
             Ok(x) => x,
             Err(x) => x,
         };

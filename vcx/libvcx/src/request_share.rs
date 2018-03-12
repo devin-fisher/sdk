@@ -10,10 +10,17 @@ use std::collections::HashMap;
 use messages;
 use messages::GeneralMessage;
 use messages::send_message::parse_msg_uid;
+use messages::trustee::data::{RecoveryShare};
+use return_share::ReturnShareMsg;
 use utils::error;
 use proof::generate_nonce;
 
-use serde_json::Value;
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct RequestShareMsg {
+    pub msg_type: String,
+    pub version: String,
+    pub msg_uid: Option<String>
+}
 
 lazy_static! {
     static ref HANDLE_MAP: Mutex<HashMap<u32, Box<ReturnShare>>> = Default::default();
@@ -56,7 +63,11 @@ impl ReturnShare {
                self.remote_vk,
                self.prover_vk);
 
-        let request = json!({"nonce": &self.nonce, "msg_type": "REQUEST_SHARE"});
+        let request = RequestShareMsg {
+            msg_type: String::from("REQUEST_SHARE"),
+            version: String::from("0.1"),
+            msg_uid: None,
+        };
         let request = serde_json::to_string(&request).unwrap();
 
         let data = connection::generate_encrypted_payload(&self.prover_vk, &self.remote_vk, &request, "REQUEST_SHARE")?;
@@ -93,15 +104,12 @@ impl ReturnShare {
 
         let share = match parse_trust_payload(&payload) {
             Err(_) => return Ok(error::SUCCESS.code_num),
-            Ok(x) => x,
+            Ok(x) => {
+                self.state = VcxStateType::VcxStateAccepted;
+                x
+            },
         };
 
-        if let Value::String(ref nonce) = share["nonce"] {
-            let local_nonce = &self.nonce;
-            if nonce.eq(&self.nonce) {
-                self.state = VcxStateType::VcxStateAccepted;
-            }
-        }
         Ok(error::SUCCESS.code_num)
     }
 
@@ -204,12 +212,12 @@ pub fn send_share_request(handle: u32, connection_handle: u32) -> Result<u32,u32
     }
 }
 
-fn parse_trust_payload(payload: &Vec<u8>) -> Result<Value, u32> {
+fn parse_trust_payload(payload: &Vec<u8>) -> Result<RecoveryShare, u32> {
     debug!("parsing share payload: {:?}", payload);
     let data = messages::extract_json_payload(payload)?;
 
-    match serde_json::from_str(&data) {
-        Ok(x) => Ok(x),
+    match serde_json::from_str::<ReturnShareMsg>(&data) {
+        Ok(x) => Ok(x.share),
         Err(x) => {
             warn!("invalid json {}", x);
             Err(error::INVALID_JSON.code_num)

@@ -123,8 +123,8 @@ pub extern fn vcx_trustee_update_state(command_handle: u32,
 
 #[no_mangle]
 pub extern fn vcx_trustee_get_state(command_handle: u32,
-                                  handle: u32,
-                                  cb: Option<extern fn(xcommand_handle: u32, err: u32, state: u32)>) -> u32 {
+                                    handle: u32,
+                                    cb: Option<extern fn(xcommand_handle: u32, err: u32, state: u32)>) -> u32 {
     check_useful_c_callback!(cb, error::INVALID_OPTION.code_num);
 
     if !trustee::is_valid_handle(handle) {
@@ -141,12 +141,62 @@ pub extern fn vcx_trustee_get_state(command_handle: u32,
     error::SUCCESS.code_num
 }
 
+#[no_mangle]
+pub extern fn vcx_trustee_revoke_device(command_handle: u32,
+                                        handle: u32,
+                                        verkey: *const c_char,
+                                        cb: Option<extern fn(xcommand_handle: u32, err: u32)>) -> u32 {
+    check_useful_c_callback!(cb, error::INVALID_OPTION.code_num);
+    check_useful_c_str!(verkey, error::INVALID_OPTION.code_num);
+
+    if !trustee::is_valid_handle(handle) {
+        return error::INVALID_PROOF_HANDLE.code_num;
+    }
+
+    thread::spawn(move|| {
+        match trustee::revoke_key(handle, &verkey) {
+            Ok(s) => cb(command_handle, error::SUCCESS.code_num),
+            Err(e) => cb(command_handle, e)
+        };
+    });
+
+    error::SUCCESS.code_num
+}
+
+#[no_mangle]
+pub extern fn vcx_trustee_list_agents(command_handle: u32,
+                                      handle: u32,
+                                      cb: Option<extern fn(xcommand_handle: u32, err: u32, data: *const c_char)>) -> u32 {
+
+    check_useful_c_callback!(cb, error::INVALID_OPTION.code_num);
+
+    if !trustee::is_valid_handle(handle) {
+        return error::INVALID_OBJ_HANDLE.code_num;
+    }
+
+    thread::spawn(move|| {
+        match trustee::list_agents(handle) {
+            Ok(x) => {
+                info!("list agents handle: {} with data: {}",handle, x);
+                let msg = CStringUtils::string_to_cstring(x);
+                cb(command_handle, error::SUCCESS.code_num,msg.as_ptr());
+            },
+            Err(x) => {
+                warn!("could not list agents from handle {}",handle);
+                cb(command_handle,x,ptr::null_mut());
+            },
+        };
+    });
+
+    error::SUCCESS.code_num
+}
+
 
 ///
 #[no_mangle]
 pub extern fn vcx_trustee_serialize(command_handle: u32,
-                                         handle: u32,
-                                         cb: Option<extern fn(xcommand_handle: u32, err: u32, data: *const c_char)>) -> u32 {
+                                    handle: u32,
+                                    cb: Option<extern fn(xcommand_handle: u32, err: u32, data: *const c_char)>) -> u32 {
 
     check_useful_c_callback!(cb, error::INVALID_OPTION.code_num);
 
@@ -174,8 +224,8 @@ pub extern fn vcx_trustee_serialize(command_handle: u32,
 ///
 #[no_mangle]
 pub extern fn vcx_trustee_deserialize(command_handle: u32,
-                                           trustee_data: *const c_char,
-                                           cb: Option<extern fn(xcommand_handle: u32, err: u32, handle: u32)>) -> u32 {
+                                      trustee_data: *const c_char,
+                                      cb: Option<extern fn(xcommand_handle: u32, err: u32, handle: u32)>) -> u32 {
 
     check_useful_c_callback!(cb, error::INVALID_OPTION.code_num);
     check_useful_c_str!(trustee_data, error::INVALID_OPTION.code_num);

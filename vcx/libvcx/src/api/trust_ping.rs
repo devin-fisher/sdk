@@ -158,6 +158,6 @@ pub extern fn vcx_trust_ping_send_request(command_handle: u32,
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+//    use super::*;
 
 }

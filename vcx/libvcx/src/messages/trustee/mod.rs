@@ -4,14 +4,15 @@ pub mod offer;
 pub mod request;
 pub mod data;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[allow(non_camel_case_types)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum MsgVersion {
     #[serde(rename = "0.1")]
     v0_1
 }
 
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum TrusteeMsgType {
     TrusteeOffer,
