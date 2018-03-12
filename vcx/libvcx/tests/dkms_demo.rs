@@ -258,7 +258,7 @@ fn chapter_1_demo(actor: &Actor) {
 
             println!("Pong was send!");
 
-            db_put("cunion_for_alice_h", format!("{}", cunion_h));
+            db_put("cunion_for_alice_h", format!("{}", cunion_h)).unwrap();
 
         },
         &Actor::CUnion => {
@@ -311,7 +311,7 @@ fn chapter_1_demo(actor: &Actor) {
 
             println!("Alice was Authenticated!!!!");
 
-            db_put("alice_for_cunion_h", format!("{}", alice_h));
+            db_put("alice_for_cunion_h", format!("{}", alice_h)).unwrap();
         },
         _ => () //DOES NOT ACT IN THIS CHAPTER
     }
@@ -355,7 +355,7 @@ fn chapter_2_demo(actor: &Actor) {
                         vcx::api::disclosed_proof::vcx_disclosed_proof_update_state,
                         None).unwrap();
 
-            db_put("bob_for_alice_h", format!("{}", bob_h));
+            db_put("bob_for_alice_h", format!("{}", bob_h)).unwrap();
 
         },
         &Actor::Bob => {
@@ -407,7 +407,7 @@ fn chapter_2_demo(actor: &Actor) {
 
             assert_eq!(1, proof_state);
 
-            db_put("alice_for_bob_h", format!("{}", alice_h));
+            db_put("alice_for_bob_h", format!("{}", alice_h)).unwrap();
 
         },
         _ => () //DOES NOT ACT IN THIS CHAPTER
@@ -613,7 +613,7 @@ fn chapter_4_demo(actor: &Actor, dir_path: &Path) {
                         vcx::api::trustee::vcx_trustee_update_state,
                         None).unwrap();
 
-            db_put("trustee_handle", format!("{}", trustee_h));
+            db_put("trustee_handle", format!("{}", trustee_h)).unwrap();
 
         },
         &Actor::CUnion => {
@@ -655,17 +655,17 @@ fn chapter_4_demo(actor: &Actor, dir_path: &Path) {
                         vcx::api::trustee::vcx_trustee_update_state,
                         None).unwrap();
 
-            db_put("trustee_handle", format!("{}", trustee_h));
+            db_put("trustee_handle", format!("{}", trustee_h)).unwrap();
         },
         _ => () //DOES NOT ACT IN THIS CHAPTER
     }
 }
 
-fn chapter_5_demo(actor: &Actor, dir_path: &Path) {
+fn chapter_5_demo(actor: &Actor, _dir_path: &Path) {
     print_chapter("CHAPTER FIVE", None);
 
     match actor {
-        &Actor::Alice_New => {
+        &Actor::AliceNew => {
             println!("ENTER ALICE's New Agent");
 
             println!("Recovery Connection with Bob:");
@@ -719,7 +719,7 @@ fn chapter_5_demo(actor: &Actor, dir_path: &Path) {
 
             api_caller::str_r_check(&shares_handles,
                                     vcx::api::backup::vcx_backup_do_restore).unwrap();
-        },
+        }
         &Actor::Bob => {
             println!("ENTER BOB");
 
@@ -901,7 +901,7 @@ fn full_demo(actor: &Actor) {
         init_actor(actor, dir_path);
         chapter_1_demo(actor);
         chapter_2_demo(actor);
-//        chapter_3_demo(actor);
+        chapter_3_demo(actor);
         chapter_4_demo(actor, dir_path);
         chapter_5_demo(actor, dir_path);
 

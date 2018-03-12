@@ -104,7 +104,7 @@ pub fn config_info(actor: &Actor) -> ConfigInfo {
                 recovery_verkey: String::from("Ageo5PwVFdaQjSszNT9hsfPA4szCFq4sT378mfUnaNtL"),
             }
         },
-        &Actor::Alice_New => {
+        &Actor::AliceNew => {
             ConfigInfo {
                 agent_endpoint: String::from("https://dkmscas.pdev.evernym.com"),
                 agency_pairwise_did: String::from("YTpNMUPavSFvTXYJHSZgsh"),
@@ -297,7 +297,7 @@ pub fn wallet_entries(actor: &Actor) -> &[[&str;3]] {
                 ],
             ]
         },
-        &Actor::Alice_New => {
+        &Actor::AliceNew => {
             &[
                 [
                     "my_did::JuJdkXUukd5wvGujXgCh2P",
