@@ -13,8 +13,6 @@ export async function backup (fileList: string[]): Promise<void> {
         rc = rustAPI().vcx_backup_do_backup(0, fileListJson, cb)
         if (rc) {
           reject(rc)
-        } else {
-          resolve(rc)
         }
       },
       (resolve, reject) => Callback('void', ['uint32', 'uint32'], (xhandle, err) => {
@@ -39,8 +37,6 @@ export async function restore (shareHandles: string[]): Promise<void> {
         rc = rustAPI().vcx_backup_do_restore(0, shareHandlesJson, cb)
         if (rc) {
           reject(rc)
-        } else {
-          resolve(rc)
         }
       },
       (resolve, reject) => Callback('void', ['uint32', 'uint32'], (xhandle, err) => {
