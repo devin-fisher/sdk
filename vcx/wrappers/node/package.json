@@ -20,7 +20,7 @@
         "url": "git+https://github.com/evernym/vcx.git",
         "type": "git"
     },
-    "version": "0.1.543416+469b25d",
+    "version": "0.1.5412212-a1d1533",
     "dependencies": {
         "@types/node": "^8.0.47",
         "weak": "^1.0.1",
@@ -39,7 +39,8 @@
         "compile": "./node_modules/.bin/tsc -p ./tsconfig.json",
         "test": "mocha -gc --expose-gc test/**/*Test.js && mocha -gc --expose-gc test/**/*Test.separate.js",
         "lint": "./node_modules/.bin/tslint --type-check -c ./tslint.json -p ./tsconfig.json && ./node_modules/.bin/standard 'test/**/*.js'",
-        "doc-gen": "./node_modules/.bin/jsdoc -r -d doc dist/*"
+        "doc-gen": "./node_modules/.bin/jsdoc -r -d doc dist/*",
+        "deb-gen": "python3 ../../ci/scripts/create_npm_deb.py vcx-*.tgz"
     },
     "devDependencies": {
         "tslint": "^5.8.0",

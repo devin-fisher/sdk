@@ -3,7 +3,6 @@ import { Callback } from 'ffi'
 import { VCXInternalError } from '../errors'
 import { rustAPI } from '../rustlib'
 import { createFFICallbackPromise } from '../utils/ffi-helpers'
-import { StateType } from './common'
 import { Connection } from './connection'
 import { VCXBaseWithState } from './VCXBaseWithState'
 
@@ -18,12 +17,12 @@ export class DisclosedProof extends VCXBaseWithState {
   protected _serializeFn = rustAPI().vcx_disclosed_proof_serialize
   protected _deserializeFn = rustAPI().vcx_disclosed_proof_deserialize
 
-  constructor (sourceId, { }) {
+  constructor (sourceId) {
     super(sourceId)
   }
 
   static async create (sourceId: string, request: string): Promise<DisclosedProof> {
-    const newObj = new DisclosedProof(sourceId, request)
+    const newObj = new DisclosedProof(sourceId)
     try {
       await newObj._create((cb) => rustAPI().vcx_disclosed_proof_create_with_request(
         0,
@@ -40,8 +39,7 @@ export class DisclosedProof extends VCXBaseWithState {
 
   static async deserialize (data: IDisclosedProofData) {
     try {
-      const attr = {}
-      const newObj = await super._deserialize<DisclosedProof, {}>(DisclosedProof, data, attr)
+      const newObj = await super._deserialize<DisclosedProof, {}>(DisclosedProof, data)
       return newObj
     } catch (err) {
       throw new VCXInternalError(`vcx_disclosed_proof_deserialize -> ${err}`)

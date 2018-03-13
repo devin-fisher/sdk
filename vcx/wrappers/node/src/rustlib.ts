@@ -29,6 +29,8 @@ export const FFI_PROOF_HANDLE = 'uint32'
 export const FFI_CLAIMDEF_HANDLE = 'uint32'
 export const FFI_SCHEMA_HANDLE = 'uint32'
 export const FFI_SCHEMA_NUMBER = 'uint32'
+export const FFI_TRUSTEE_HANDLE = 'uint32'
+export const FFI_RECOVERY_SHARES_HANDLE = 'uint32'
 
 // Rust Lib Native Types
 export type rust_did = string
@@ -85,7 +87,7 @@ export interface IFFIEntryPoint {
   vcx_disclosed_proof_new_requests: (commandId: number, connectionHandle: string, cb: any) => number,
 
   // claim
-  vcx_claim_create_with_offer: (commandId: number, sourceId: string, req: string, cb: any) => number,
+  vcx_claim_create_with_offer: (commandId: number, sourceId: string, offer: string, cb: any) => number,
   vcx_claim_release: (handle: string) => number,
   vcx_claim_send_request: (commandId: number, handle: string, connectionHandle: string, cb: any) => number,
   vcx_claim_serialize: (commandId: number, handle: string, cb: any) => number,
@@ -113,6 +115,39 @@ export interface IFFIEntryPoint {
   vcx_schema_serialize: (commandId: number, handle: string, cb: any) => number,
   vcx_schema_release: (handle: string) => number,
 
+  // offer trustee
+  vcx_offer_trustee_deserialize: (commandId: number, data: string, cb: any) => number,
+  vcx_offer_trustee_serialize: (commandId: number, handle: string, cb: any) => number,
+  vcx_offer_trustee_update_state: (commandId: number, handle: string, cb: any) => number,
+  vcx_offer_trustee_get_state: (commandId: number, handle: string, cb: any) => number,
+  vcx_offer_trustee_create: (commandId: number, sourceId: string, cb: any) => number,
+  vcx_offer_trustee_send_data: (commandId: number, handle: string, connectionHandle: string,
+                                recoverySharesHandle: string, cb: any) => number,
+  vcx_offer_trustee_send_offer: (commandId: number, handle: string, connectionHandle: string, cb: any) => number,
+  vcx_offer_trustee_release: (handle: string) => number,
+
+  // trustee
+  vcx_trustee_create_with_offer: (commandId: number, sourceId: string, offer: string, cb: any) => number,
+  vcx_trustee_release: (handle: string) => number,
+  vcx_trustee_send_request: (commandId: number, handle: string, connectionHandle: string, cb: any) => number,
+  vcx_trustee_serialize: (commandId: number, handle: string, cb: any) => number,
+  vcx_trustee_deserialize: (commandId: number, data: string, cb: any) => number,
+  vcx_trustee_update_state: (commandId: number, handle: string, cb: any) => number,
+  vcx_trustee_get_state: (commandId: number, handle: string, cb: any) => number,
+  vcx_trustee_new_offers: (commandId: number, connectionHandle: string, cb: any) => number,
+  vcx_trustee_list_agents: (commandId: number, handle: string, cb: any) => number,
+  vcx_trustee_revoke_device: (commandId: number, handle: string, verkey: string, cb: any) => number,
+
+  // backup
+  vcx_backup_do_backup: (commandId: number, fileList: string, cb: any) => number,
+  vcx_backup_do_restore: (commandId: number, shareHandles: string, cb: any) => number,
+
+  // recovery shares
+  vcx_recovery_shares_create: (commandId: number, sourceId: string, count: number,
+                               threshold: number, cb: any) => number,
+  vcx_recovery_shares_deserialize: (commandId: number, data: string, cb: any) => number,
+  vcx_recovery_shares_serialize: (commandId: number, handle: string, cb: any) => number,
+  vcx_recovery_shares_release: (handle: string) => number,
 }
 
 // tslint:disable object-literal-sort-keys
@@ -199,7 +234,45 @@ export const FFIConfiguration: { [ Key in keyof IFFIEntryPoint ]: any } = {
   vcx_schema_get_sequence_no: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_SCHEMA_HANDLE, FFI_CALLBACK_PTR]],
   vcx_schema_deserialize: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_STRING_DATA, FFI_CALLBACK_PTR]],
   vcx_schema_release: [FFI_ERROR_CODE, [FFI_SCHEMA_HANDLE]],
-  vcx_schema_serialize: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_SCHEMA_HANDLE, FFI_CALLBACK_PTR]]
+  vcx_schema_serialize: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_SCHEMA_HANDLE, FFI_CALLBACK_PTR]],
+
+  // offer_trustee
+  vcx_offer_trustee_deserialize: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_STRING_DATA, FFI_CALLBACK_PTR]],
+  vcx_offer_trustee_serialize: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_TRUSTEE_HANDLE, FFI_CALLBACK_PTR]],
+  vcx_offer_trustee_update_state: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_TRUSTEE_HANDLE, FFI_CALLBACK_PTR]],
+  vcx_offer_trustee_get_state: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_TRUSTEE_HANDLE, FFI_CALLBACK_PTR]],
+  vcx_offer_trustee_create: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_SOURCE_ID, FFI_CALLBACK_PTR]],
+  vcx_offer_trustee_send_data: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_TRUSTEE_HANDLE, FFI_CONNECTION_HANDLE,
+    FFI_RECOVERY_SHARES_HANDLE, FFI_CALLBACK_PTR]],
+  vcx_offer_trustee_send_offer: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_TRUSTEE_HANDLE, FFI_CONNECTION_HANDLE,
+    FFI_CALLBACK_PTR]],
+  vcx_offer_trustee_release: [FFI_ERROR_CODE, [FFI_TRUSTEE_HANDLE]],
+
+  // trustee
+  vcx_trustee_create_with_offer: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_SOURCE_ID,
+    FFI_STRING_DATA, FFI_CALLBACK_PTR]],
+  vcx_trustee_release: [FFI_ERROR_CODE, [FFI_CLAIM_HANDLE]],
+  vcx_trustee_send_request: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_CLAIM_HANDLE, FFI_CONNECTION_HANDLE,
+    FFI_CALLBACK_PTR]],
+  vcx_trustee_serialize: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_CLAIM_HANDLE, FFI_CALLBACK_PTR]],
+  vcx_trustee_deserialize: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_STRING_DATA, FFI_CALLBACK_PTR]],
+  vcx_trustee_update_state: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_CLAIM_HANDLE, FFI_CALLBACK_PTR]],
+  vcx_trustee_get_state: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_CLAIM_HANDLE, FFI_CALLBACK_PTR]],
+  vcx_trustee_new_offers: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_CONNECTION_HANDLE, FFI_CALLBACK_PTR]],
+  vcx_trustee_list_agents: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_CLAIM_HANDLE, FFI_CALLBACK_PTR]],
+  vcx_trustee_revoke_device: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_CLAIM_HANDLE, FFI_STRING, FFI_CALLBACK_PTR]],
+
+  // backup
+  vcx_backup_do_backup: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_STRING_DATA, FFI_CALLBACK_PTR]],
+  vcx_backup_do_restore: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_STRING_DATA, FFI_CALLBACK_PTR]],
+
+  // recovery shares
+  vcx_recovery_shares_create: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_SOURCE_ID, FFI_UNSIGNED_INT, FFI_UNSIGNED_INT,
+    FFI_CALLBACK_PTR]],
+  vcx_recovery_shares_deserialize: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_STRING_DATA, FFI_CALLBACK_PTR]],
+  vcx_recovery_shares_release: [FFI_ERROR_CODE, [FFI_SCHEMA_HANDLE]],
+  vcx_recovery_shares_serialize: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_SCHEMA_HANDLE, FFI_CALLBACK_PTR]]
+
 }
 
 let _rustAPI: IFFIEntryPoint = null

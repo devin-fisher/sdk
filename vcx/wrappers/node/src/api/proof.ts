@@ -90,7 +90,8 @@ export class Proof extends VCXBaseWithState {
    * @function create
    * @param {IProofConfig} data
    * @example <caption>Example of IProofConfig</caption>
-   * {sourceId: string,attrs: [{issuerDid: "123",schemaSeqNo: 1, name: "name of attr expected"}], name: "name of proof"}
+   * {sourceId: string,attrs: [{issuerDid: "123",schemaSeqNo: 1,
+   *  name: "name of attr expected"}], name: "name of proof"}
    * @returns {Promise<Proof>} A Proof Object
    */
   static async create (data: IProofConfig): Promise<Proof> {

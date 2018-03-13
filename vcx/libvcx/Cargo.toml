@@ -1,7 +1,7 @@
 [package]
 
 name = "libvcx"
-version = "0.1.5022753"
+version = "0.1.5412212"
 authors = [ "Mark Hadley <mark.hadley@evernym.com>" ]
 publish = false
 description = "C callable library for libvcx"
@@ -41,7 +41,7 @@ openssl = "0.9"
 num-traits = "0.2.0"
 rusoto_s3 = "0.31.0"
 rusoto_core = "0.31.0"
-uuid = { version = "0.6", features = ["v4"] }
+
 
 [build-dependencies]
 serde = "1.0"
@@ -61,7 +61,7 @@ depends = "$auto, libindy (>=1.3)"
 extended-description = """\
 "TODO DESCRIPTION"""
 section = "admin"
-revision = "f6b7364"
+revision = "a1d1533"
 priority = "optional"
 assets = [
     ["target/debug/libvcx.so.*", "usr/lib/", "644"],
