@@ -2,7 +2,7 @@ pub mod ledger;
 pub mod anoncreds;
 pub mod signus;
 pub mod wallet;
-pub mod authz;
+//pub mod authz;
 pub mod callback;
 pub mod callback_u32;
 //pub mod call;

@@ -16,15 +16,15 @@ export async function initVcx (configPath: string, options: IInitVCXOptions = {}
       (resolve, reject, cb) => {
         rc = rustAPI().vcx_init(0, configPath, cb)
         if (rc) {
-          reject(rc)
+          reject()
         }
       },
       (resolve, reject) => Callback('void', ['uint32', 'uint32', 'string'], (xhandle, err) => {
         if (err) {
-          reject(err)
-          return
+          reject()
+        } else {
+          resolve()
         }
-        resolve(err)
       })
     )
   } catch (err) {
