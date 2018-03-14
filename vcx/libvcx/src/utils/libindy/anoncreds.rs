@@ -2,7 +2,7 @@ extern crate libc;
 use self::libc::c_char;
 use std::ffi::CString;
 use utils::error;
-use utils::libindy::{indy_function_eval};
+use utils::libindy::{indy_function_eval, check_str};
 use utils::libindy::return_types::{ Return_I32_STR, Return_I32_BOOL, Return_I32_STR_STR, Return_I32 };
 use utils::libindy::SigTypes;
 use utils::libindy::error_codes::{map_indy_error_code, map_string_error};
@@ -80,17 +80,6 @@ extern {
                                                     err: i32)>
     ) -> i32;
 }
-
-fn check_str(str_opt: Option<String>) -> Result<String, u32>{
-    match str_opt {
-        Some(str) => Ok(str),
-        None => {
-            warn!("libindy did not return a string");
-            return Err(error::UNKNOWN_LIBINDY_ERROR.code_num)
-        }
-    }
-}
-
 
 pub fn libindy_verifier_verify_proof(proof_req_json: &str,
                                      proof_json: &str,

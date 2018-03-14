@@ -415,7 +415,7 @@ mod tests {
 
         httpclient::set_next_u8_response(TRUSTEE_DATA_RESPONSE.to_vec());
 
-        update_state(t_h);
+        update_state(t_h).unwrap();
 
         assert_eq!(4, get_state(t_h).unwrap());
     }

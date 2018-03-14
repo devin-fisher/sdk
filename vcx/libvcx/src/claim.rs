@@ -277,6 +277,8 @@ pub fn claim_create_with_offer(source_id: Option<String>, offer: &str) -> Result
     let offer: ClaimOffer = serde_json::from_str(offer).map_err(|_|error::INVALID_JSON.code_num)?;
     new_claim.set_claim_offer(offer);
 
+    new_claim.state = VcxStateType::VcxStateRequestReceived;
+
     info!("inserting claim into handle map");
     Ok(HANDLE_MAP.add(new_claim)?)
 }
@@ -384,8 +386,40 @@ pub fn from_string(claim_data: &str) -> Result<u32, u32> {
 #[cfg(test)]
 mod tests {
     extern crate serde_json;
+    use super::*;
+    use utils::httpclient;
+    use utils::dkms_constants::*;
+
 
     #[test]
-    fn noop(){
+    #[ignore] // Need to mock indy ledger calls
+    fn full_claim_test(){
+        ::utils::logger::LoggerUtils::init();
+        settings::set_defaults();
+        settings::set_config_value(settings::CONFIG_ENABLE_TEST_MODE, "true");
+        wallet::init_wallet("full_claim_test").unwrap();
+
+        let connection_h = connection::build_connection("test_send_claim_offer".to_owned()).unwrap();
+
+        httpclient::set_next_u8_response(NEW_CLAIM_OFFER_RESPONSE.to_vec());
+
+        let offers = new_claims_offer_messages(connection_h, None).unwrap();
+        println!("{}", offers);
+        let offers:Value = serde_json::from_str(&offers).unwrap();
+        let offers = serde_json::to_string(&offers[0]).unwrap();
+
+        let c_h = claim_create_with_offer(Some("TEST_CLAIM".to_owned()), &offers).unwrap();
+        assert_eq!(3, get_state(c_h).unwrap());
+
+        send_claim_request(c_h, connection_h).unwrap();
+
+        assert_eq!(2, get_state(c_h).unwrap());
+
+        httpclient::set_next_u8_response(CLAIM_RESPONSE.to_vec());
+
+        update_state(c_h).unwrap();
+        assert_eq!(4, get_state(c_h).unwrap());
+
+        wallet::delete_wallet("full_claim_test").unwrap();
     }
 }

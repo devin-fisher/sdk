@@ -2,6 +2,7 @@ pub mod ledger;
 pub mod anoncreds;
 pub mod signus;
 pub mod wallet;
+pub mod authz;
 pub mod callback;
 pub mod callback_u32;
 //pub mod call;
@@ -19,6 +20,8 @@ use self::libc::c_char;
 
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 use std::fmt;
+
+use utils::error;
 
 pub enum SigTypes {
     CL
@@ -59,6 +62,16 @@ fn option_cstring_as_ptn(opt: &Option<CString>) -> *const c_char {
     match opt {
         &Some(ref s) => s.as_ptr(),
         &None => null()
+    }
+}
+
+fn check_str(str_opt: Option<String>) -> Result<String, u32>{
+    match str_opt {
+        Some(str) => Ok(str),
+        None => {
+            warn!("libindy did not return a string");
+            return Err(error::UNKNOWN_LIBINDY_ERROR.code_num)
+        }
     }
 }
 

@@ -461,6 +461,9 @@ mod tests {
 
     use super::*;
     use messages;
+    use utils::httpclient;
+    use utils::dkms_constants::*;
+
 
     fn build_proof_request() -> String {
         let mut proof_obj = messages::proof_request();
@@ -474,6 +477,31 @@ mod tests {
             .requested_attrs("[{\"name\":\"person name\"}]")
             .requested_predicates("[]")
             .serialize_message().expect("Proof Request Message should work in tests")
+    }
+
+    #[test]
+    #[ignore] // Need to mock indy ledger calls
+    fn full_disclosed_proof_test() {
+        ::utils::logger::LoggerUtils::init();
+        settings::set_defaults();
+        settings::set_config_value(settings::CONFIG_ENABLE_TEST_MODE, "true");
+//
+        let connection_h = connection::build_connection("test_send_claim_offer".to_owned()).unwrap();
+
+        httpclient::set_next_u8_response(NEW_PROOF_REQUEST_RESPONSE.to_vec());
+
+        let requests = new_proof_requests_messages(connection_h, None).unwrap();
+        println!("{}", requests);
+        let requests:Value = serde_json::from_str(&requests).unwrap();
+        let requests = serde_json::to_string(&requests[0]).unwrap();
+
+
+        let handle = create_proof(Some("TEST_CLAIM".to_owned()), &requests).unwrap();
+        assert_eq!(3, get_state(handle).unwrap());
+
+        send_proof(handle, connection_h).unwrap();
+
+        assert_eq!(4, get_state(handle).unwrap());
     }
 
     #[test]
