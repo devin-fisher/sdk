@@ -19,7 +19,7 @@ export async function initVcx (configPath: string, options: IInitVCXOptions = {}
           reject()
         }
       },
-      (resolve, reject) => Callback('void', ['uint32', 'uint32', 'string'], (xhandle, err) => {
+      (resolve, reject) => Callback('void', ['uint32', 'uint32'], (xhandle, err) => {
         if (err) {
           reject()
         } else {
