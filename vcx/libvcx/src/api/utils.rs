@@ -6,6 +6,7 @@ use messages::register::connect_register_provision;
 use std::ptr;
 use utils::httpclient;
 use utils::constants::*;
+use utils::dkms_constants::*;
 use utils::cstring::CStringUtils;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -54,6 +55,10 @@ pub extern fn vcx_set_next_agency_response(message_index: u32) {
         5 => UPDATE_PROOF_RESPONSE.to_vec(),
         6 => CLAIM_REQ_RESPONSE.to_vec(),
         7 => PROOF_RESPONSE.to_vec(),
+        8 => UPDATE_TRUSTEE_OFFER_RESPONSE.to_vec(),
+        9 => TRUSTEE_REQUEST_RESPONSE.to_vec(),
+        10 => NEW_OFFER_RESPONSE.to_vec(),
+        11 => TRUSTEE_DATA_RESPONSE.to_vec(),
         _ => Vec::new(),
     };
 

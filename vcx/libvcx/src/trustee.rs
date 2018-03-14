@@ -23,13 +23,12 @@ use utils::libindy::wallet;
 use utils::libindy::crypto;
 
 use settings;
-
 use utils::option_util::expect_ok_or;
-
 use connection;
-
-
 use serde_json::Value;
+
+use utils::httpclient;
+use utils::constants::SEND_MESSAGE_RESPONSE;
 
 lazy_static! {
     static ref HANDLE_MAP: ObjectCache<Trustee>  = Default::default();
@@ -139,6 +138,8 @@ impl Trustee {
         let offer_msg_id = expect_ok_or(offer_msg_id.msg_uid.as_ref(),
                                         "Expect offer to have a msg_uid",
                                         10 as u32)?;
+
+        if settings::test_agency_mode_enabled() { httpclient::set_next_u8_response(SEND_MESSAGE_RESPONSE.to_vec()); }
 
         match messages::send_message().to(local_my_did)
             .to_vk(local_my_vk)
@@ -385,7 +386,37 @@ pub fn from_string(data: &str) -> Result<u32, u32> {
 mod tests {
     extern crate serde_json;
 
+    use super::*;
+    use utils::httpclient;
+    use utils::dkms_constants::*;
+
     #[test]
-    fn noop(){
+    fn full_trustee_test(){
+        ::utils::logger::LoggerUtils::init();
+        settings::set_defaults();
+        settings::set_config_value(settings::CONFIG_ENABLE_TEST_MODE, "true");
+
+        let connection_h = connection::build_connection("test_send_claim_offer".to_owned()).unwrap();
+
+        httpclient::set_next_u8_response(NEW_OFFER_RESPONSE.to_vec());
+
+        let offers = new_trustee_offer_messages(connection_h, None).unwrap();
+        println!("{}", offers);
+        let offers:Value = serde_json::from_str(&offers).unwrap();
+        let offers = serde_json::to_string(&offers[0]).unwrap();
+
+        let t_h = trustee_create_with_offer(Some("trustee".to_owned()), &offers).unwrap();
+
+        assert_eq!(3, get_state(t_h).unwrap());
+
+        send_trustee_request(t_h, connection_h).unwrap();
+
+        assert_eq!(2, get_state(t_h).unwrap());
+
+        httpclient::set_next_u8_response(TRUSTEE_DATA_RESPONSE.to_vec());
+
+        update_state(t_h);
+
+        assert_eq!(4, get_state(t_h).unwrap());
     }
 }

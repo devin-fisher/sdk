@@ -207,7 +207,7 @@ pub fn parse_msg_uid(response: &str) -> Result<String,u32> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use utils::constants::SEND_CLAIM_OFFER_RESPONSE;
+    use utils::constants::SEND_MESSAGE_RESPONSE;
 
     #[test]
     fn test_msgpack() {
@@ -236,7 +236,7 @@ mod tests {
     fn test_parse_send_message_response() {
         settings::set_defaults();
         settings::set_config_value(settings::CONFIG_ENABLE_TEST_MODE, "true");
-        let result = parse_send_message_response(SEND_CLAIM_OFFER_RESPONSE.to_vec()).unwrap();
+        let result = parse_send_message_response(SEND_MESSAGE_RESPONSE.to_vec()).unwrap();
 
         assert_eq!("{\"@type\":{\"name\":\"MSG_SENT\",\"ver\":\"1.0\"},\"uid\":\"ntc2ytb\"}", result);
     }

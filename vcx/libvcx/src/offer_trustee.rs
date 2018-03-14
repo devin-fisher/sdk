@@ -22,6 +22,9 @@ use settings;
 use recovery_shares;
 use utils::option_util::expect_ok_or;
 
+use utils::httpclient;
+use utils::constants::SEND_MESSAGE_RESPONSE;
+
 
 lazy_static! {
     static ref HANDLE_MAP: Mutex<HashMap<u32, Box<OfferTrustee>>> = Default::default();
@@ -76,6 +79,8 @@ impl OfferTrustee {
 
         let data = connection::generate_encrypted_payload(&self.issued_vk, &self.remote_vk, &payload, "TRUSTEE_OFFER")?;
 
+        if settings::test_agency_mode_enabled() { httpclient::set_next_u8_response(SEND_MESSAGE_RESPONSE.to_vec()); }
+
         match messages::send_message().to(&self.issued_did)
             .to_vk(&self.issued_vk)
             .msg_type("trusteeOffer")
@@ -118,6 +123,8 @@ impl OfferTrustee {
 
         debug!("trustee data: {:?}", data);
         let data = connection::generate_encrypted_payload(&self.issued_vk, &self.remote_vk, &data, "TRUSTEE_DATA")?;
+
+        if settings::test_agency_mode_enabled() { httpclient::set_next_u8_response(SEND_MESSAGE_RESPONSE.to_vec()); }
 
         match messages::send_message().to(&self.issued_did)
             .to_vk(&self.issued_vk)
@@ -353,7 +360,43 @@ pub fn send_trustee_data(handle: u32, recovery_shares: u32, connection_handle: u
 
 #[cfg(test)]
 pub mod tests {
-//    use super::*;
+    use super::*;
+    use settings;
+    use utils::httpclient;
+    use utils::dkms_constants::*;
+
+    #[test]
+    fn full_trustee_offer_test() {
+        ::utils::logger::LoggerUtils::init();
+        settings::set_defaults();
+        settings::set_config_value(settings::CONFIG_ENABLE_TEST_MODE, "true");
+
+        settings::set_config_value(settings::CONFIG_IDENTITY_POLICY_ADDRESS, "GoHaRgzghcZ3GQ2VimymkoWSW7q9un4KR7rz3tJ24Gqr");
+
+        let connection_h = connection::build_connection("test_send_claim_offer".to_owned()).unwrap();
+
+        let trustee_h = offer_trustee_create(Some("Bob_trustee".to_owned())).unwrap();
+
+        assert_eq!(1, get_state(trustee_h));
+
+        send_trustee_offer(trustee_h, connection_h).unwrap();
+
+        assert_eq!(2, get_state(trustee_h));
+
+        httpclient::set_next_u8_response(TRUSTEE_REQUEST_RESPONSE.to_vec());
+        httpclient::set_next_u8_response(UPDATE_TRUSTEE_OFFER_RESPONSE.to_vec());
+
+        update_state(trustee_h);
+
+        assert_eq!(3, get_state(trustee_h));
+
+        let recovery_h = recovery_shares::create(Some("recovery".to_owned()), 10, 2).unwrap();
+
+        send_trustee_data(trustee_h, recovery_h, connection_h).unwrap();
+
+        assert_eq!(4, get_state(trustee_h));
+
+    }
 
 
 }

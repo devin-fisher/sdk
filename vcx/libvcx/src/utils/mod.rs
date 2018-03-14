@@ -8,6 +8,7 @@ pub mod error;
 pub mod httpclient;
 pub mod callback;
 pub mod constants;
+pub mod dkms_constants;
 pub mod timeout;
 pub mod openssl;
 pub mod json;
