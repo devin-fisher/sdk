@@ -6,7 +6,7 @@ import { createFFICallbackPromise } from '../utils/ffi-helpers'
 import { Connection } from './connection'
 import { VCXBaseWithState } from './VCXBaseWithState'
 
-export interface IClaimData {
+export interface IClaimStructData {
   source_id: string,
 }
 
@@ -37,7 +37,7 @@ export class Claim extends VCXBaseWithState {
     }
   }
 
-  static async deserialize (claimData: IClaimData) {
+  static async deserialize (claimData: IClaimStructData) {
     try {
       const claim = await super._deserialize<Claim, {}>(Claim, claimData)
       return claim
@@ -80,7 +80,7 @@ export class Claim extends VCXBaseWithState {
     }
   }
 
-  async serialize (): Promise<IClaimData> {
+  async serialize (): Promise<IClaimStructData> {
     try {
       return JSON.parse(await super._serialize())
     } catch (err) {

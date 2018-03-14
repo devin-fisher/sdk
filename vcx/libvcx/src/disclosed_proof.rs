@@ -362,7 +362,7 @@ pub fn create_proof(source_id: Option<String>, proof_req: &str) -> Result<u32, u
     new_proof.set_proof_request(serde_json::from_str(proof_req)
         .map_err(|_|error::INVALID_JSON.code_num)?);
 
-    new_proof.set_state(VcxStateType::VcxStateInitialized);
+    new_proof.set_state(VcxStateType::VcxStateRequestReceived);
 
     Ok(HANDLE_MAP.add(new_proof)?)
 }

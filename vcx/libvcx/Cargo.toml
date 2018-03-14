@@ -1,7 +1,7 @@
 [package]
 
 name = "libvcx"
-version = "0.1.5412212"
+version = "0.1.5557073"
 authors = [ "Mark Hadley <mark.hadley@evernym.com>" ]
 publish = false
 description = "C callable library for libvcx"
@@ -61,7 +61,7 @@ depends = "$auto, libindy (>=1.3)"
 extended-description = """\
 "TODO DESCRIPTION"""
 section = "admin"
-revision = "a1d1533"
+revision = "95f58b8"
 priority = "optional"
 assets = [
     ["target/debug/libvcx.so.*", "usr/lib/", "644"],

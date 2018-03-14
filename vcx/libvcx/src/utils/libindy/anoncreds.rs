@@ -1,7 +1,6 @@
 extern crate libc;
 use self::libc::c_char;
 use std::ffi::CString;
-use utils::error;
 use utils::libindy::{indy_function_eval, check_str};
 use utils::libindy::return_types::{ Return_I32_STR, Return_I32_BOOL, Return_I32_STR_STR, Return_I32 };
 use utils::libindy::SigTypes;
