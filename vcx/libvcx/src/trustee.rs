@@ -83,7 +83,7 @@ impl Trustee {
         let cap = cap.capabilities.clone();
         let rtn = TrusteeRequest{
             version: MsgVersion::v0_1,
-            msg_type: TrusteeMsgType::TrusteeOffer,
+            msg_type: TrusteeMsgType::TrusteeRequest,
             capabilities: cap,
             authorization_keys: vec![policy_key],
         };
@@ -130,7 +130,7 @@ impl Trustee {
             Err(_) => return Err(error::INVALID_JSON.code_num)
         };
 
-        let data: Vec<u8> = connection::generate_encrypted_payload(local_my_vk, local_their_vk, &payload, "TRUSTEE_REQ")?;
+        let data: Vec<u8> = connection::generate_encrypted_payload(local_my_vk, local_their_vk, &payload, "TRUSTEE_REQUEST")?;
 //        let offer_msg_id = _value_from_json(self.trustee_offer.as_ref(), "msg_uid", "", e_code)?;
         let offer_msg_id = expect_ok_or(self.trustee_offer.as_ref(),
                                         "Expect to have a offer to send request",

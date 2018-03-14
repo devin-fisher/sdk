@@ -215,7 +215,7 @@ impl OfferTrustee {
 
         let rtn = TrusteeData {
             version: MsgVersion::v0_1,
-            msg_type: TrusteeMsgType::TrusteeOffer,
+            msg_type: TrusteeMsgType::TrusteeData,
             address,
             share: RecoveryShare{
                 version: MsgVersion::v0_1,

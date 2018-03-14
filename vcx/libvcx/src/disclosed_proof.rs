@@ -24,7 +24,9 @@ use utils::option_util::expect_ok_or;
 use serde_json::Value;
 use serde_json::Map;
 
-
+use settings;
+use utils::httpclient;
+use utils::constants::SEND_MESSAGE_RESPONSE;
 
 lazy_static! {
     static ref HANDLE_MAP: ObjectCache<DisclosedProof>  = Default::default();
@@ -302,7 +304,8 @@ impl DisclosedProof {
         let proof: ProofMessage = self._build_proof()?;
         let proof = serde_json::to_string(&proof).or(Err(10 as u32))?;
         let data: Vec<u8> = connection::generate_encrypted_payload(local_my_vk, local_their_vk, &proof, "PROOF")?;
-//        if settings::test_agency_mode_enabled() { httpclient::set_next_u8_response(SEND_CLAIM_OFFER_RESPONSE.to_vec()); }
+
+        if settings::test_agency_mode_enabled() { httpclient::set_next_u8_response(SEND_MESSAGE_RESPONSE.to_vec()); }
 
         match messages::send_message().to(local_my_did)
             .to_vk(local_my_vk)
