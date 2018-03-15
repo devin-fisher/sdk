@@ -137,9 +137,9 @@ export class IssuerClaim extends VCXBaseWithState {
    * @description Gets the state of the issuer claim object.
    * @async
    * @function getState
-   * @returns {Promise<number>}
+   * @returns {Promise<StateType>}
    */
-  async getState (): Promise<number> {
+  async getState (): Promise<StateType> {
     try {
       return await this._getState()
     } catch (error) {
