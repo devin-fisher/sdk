@@ -1,7 +1,7 @@
 const assert = require('chai').assert
 const vcx = require('../dist/index')
 const { stubInitVCX } = require('./helpers')
-const { Trustee } = vcx
+const { Connection, StateType, Trustee } = vcx
 
 describe('A Trustee', function () {
   this.timeout(30000)
@@ -19,31 +19,55 @@ describe('A Trustee', function () {
   })
 
   it('can be created.', async () => {
-    const obj = await Trustee.create('Test', JSON.stringify(OFFER))
+    const obj = await Trustee.create({
+      sourceId: 'Test',
+      offer: JSON.stringify(OFFER)
+    })
     assert(obj)
+    assert(obj instanceof Trustee)
   })
 
   it('can be serialized.', async () => {
-    const obj = await Trustee.create('Test', JSON.stringify(OFFER))
+    const obj = await Trustee.create({
+      sourceId: 'Test',
+      offer: JSON.stringify(OFFER)
+    })
     assert(obj)
     const val = await obj.serialize()
     assert(val)
   })
 
   it('can be deserialized.', async () => {
-    const obj = await Trustee.create('Test', JSON.stringify(OFFER))
+    const obj = await Trustee.create({
+      sourceId: 'Test',
+      offer: JSON.stringify(OFFER)
+    })
     assert(obj)
     const val = await obj.serialize()
     assert(val)
     const obj2 = await Trustee.deserialize(val)
     assert(obj2)
+    assert(obj2 instanceof Trustee)
   })
 
   it('can get state.', async () => {
-    const obj = await Trustee.create('Test', JSON.stringify(OFFER))
+    const obj = await Trustee.create({
+      sourceId: 'Test',
+      offer: JSON.stringify(OFFER)
+    })
     assert(obj)
     const state = await obj.getState()
     console.log(state)
-    assert(state === 3)
+    assert(state === StateType.RequestReceived)
   })
+
+  it('can get offers.', async () => {
+    const connection = await Connection.create({
+      id: '234'
+    })
+    const offers = await Trustee.new_offers(connection)
+    assert(Array.isArray(offers))
+  })
+
+  // TODO: Mock having a non-empty array of offers
 })
