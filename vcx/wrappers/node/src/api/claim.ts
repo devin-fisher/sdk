@@ -6,7 +6,6 @@ import { createFFICallbackPromise } from '../utils/ffi-helpers'
 import { StateType } from './common'
 import { Connection } from './connection'
 import { VCXBaseWithState } from './VCXBaseWithState'
-import { StateType } from './common'
 
 export interface IClaimOfferVCXAttributes {
   [ index: string ]: [ string ]
@@ -34,17 +33,13 @@ export interface IClaimOfferParams {
   attr: IClaimOfferVCXAttributes
 }
 
-interface IClaimOfferMessageClaimAttributes {
-  [ index: string ]: [ string ]
-}
-
 interface IClaimOfferMessage {
   msg_type: string,
   version: string,
   to_did: string,
   from_did: string,
   claim: {
-    IClaimOfferMessageClaimAttributes
+    [ index: string ]: [ string ]
   },
   schema_seq_no: number,
   issuer_did: string,
@@ -126,9 +121,9 @@ export class Claim extends VCXBaseWithState {
     const attrsVCX: IClaimOfferVCXAttributes = Object.keys(offerJSON.claim || {})
       .reduce((accum, attrKey) => ({ ...accum, [attrKey]: [offerJSON.claim[attrKey][0]] }), {})
     const claim = new Claim(sourceId, {
-      schemaNum: offerJSON.schema_seq_no,
+      attr: attrsVCX,
       claimName: offerJSON.claim_name,
-      attr: attrsVCX
+      schemaNum: offerJSON.schema_seq_no
     })
     const offer = message
     try {

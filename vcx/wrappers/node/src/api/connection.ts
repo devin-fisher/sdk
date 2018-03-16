@@ -82,9 +82,8 @@ export class Connection extends VCXBaseWithState {
    * {id: "123"}
    * @returns {Promise<Connection>} A Connection Object
    */
-  static async create_with_message ( recipientInfo: IRecipientInfo, message: string): Promise<Connection> {
-    const connection = new Connection(recipientInfo.id)
-    const invite = message
+  static async create_with_message ({ id, invite }: IRecipientInviteInfo): Promise<Connection> {
+    const connection = new Connection(id)
     const commandHandle = 0
     try {
       await connection._create((cb) => rustAPI().vcx_connection_create_with_invite(commandHandle,

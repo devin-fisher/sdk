@@ -4,7 +4,7 @@ const { stubInitVCX, shouldThrow } = require('./helpers')
 
 const { Claim, Connection, StateType, Error } = vcx
 
-/*const config = {
+/* const config = {
   sourceId: 'jsonCreation',
   issuerDid: 'arandomdidfoobar',
   attr: {
@@ -13,7 +13,7 @@ const { Claim, Connection, StateType, Error } = vcx
     key3: 'value3'
   },
   claimName: 'Claim Name'
-}*/
+} */
 const formattedAttrs = {
   key: ['value'],
   key2: ['value2'],
@@ -27,7 +27,7 @@ const claimDummyArgs = [
     claimName: 'Claim Name'
   }
 ]
-const message = '{ \"msg_type\":\"CLAIM_OFFER\", \"version\":\"0.1\", \"to_did\":\"LtMgSjtFcyPwenK9SHCyb8\", \"from_did\":\"LtMgSjtFcyPwenK9SHCyb8\", \"claim\":{ \"account_num\":[ \"8BEaoLf8TBmK4BUyX8WWnA\" ], \"name_on_account\":[ \"Alice\" ] }, \"schema_seq_no\":48, \"issuer_did\":\"Pd4fnFtRBcMKRVC2go5w3j\", \"claim_name\":\"Account Certificate\", \"claim_id\":\"3675417066\", \"msg_ref_id\":null }'
+const message = '{ "msg_type":"CLAIM_OFFER", "version":"0.1", "to_did":"LtMgSjtFcyPwenK9SHCyb8", "from_did":"LtMgSjtFcyPwenK9SHCyb8", "claim":{ "account_num":[ "8BEaoLf8TBmK4BUyX8WWnA" ], "name_on_account":[ "Alice" ] }, "schema_seq_no":48, "issuer_did":"Pd4fnFtRBcMKRVC2go5w3j", "claim_name":"Account Certificate", "claim_id":"3675417066", "msg_ref_id":null }'
 describe('An Claim', async function () {
   this.timeout(30000)
 
@@ -67,7 +67,7 @@ describe('An Claim', async function () {
     assert.equal(await claim.getState(), 1)
   })
 
-  /*it('can be sent with a valid connection', async function () {
+  /* it('can be sent with a valid connection', async function () {
     const sourceId = 'Bank Claim'
     let connection = await Connection.create({ id: '234' })
     await connection.connect()
@@ -76,7 +76,7 @@ describe('An Claim', async function () {
     await claim.sendOffer(connection)
     await claim.updateState()
     assert.equal(await claim.getState(), StateType.OfferSent)
-  })*/
+  }) */
 
   it.skip('can be created, then serialized, then deserialized and have the same sourceId, state, and claimHandle', async function () {
     const sourceId = 'SerializeDeserialize'
@@ -88,7 +88,7 @@ describe('An Claim', async function () {
     assert.equal(await claim.getState(), await claim2.getState())
   })
 
-  /*it('can be sent, then serialized, then deserialized', async function () {
+  /* it('can be sent, then serialized, then deserialized', async function () {
     // create a connection, send the claim, serialize and then deserialize
     // and compare
     const connection = await Connection.create({ id: '234' })
@@ -106,7 +106,7 @@ describe('An Claim', async function () {
     assert.equal(await claim.getState(), StateType.OfferSent)
     assert.equal(await claim.getState(), await claim2.getState())
     assert.equal(claim.handle, claim2.handle)
-  })*/
+  }) */
 
   it.skip('serialize without correct handle throws error', async function () {
     const claim = new Claim(null, {})
@@ -123,12 +123,12 @@ describe('An Claim', async function () {
     assert(claim.sourceId, sourceId)
   })
 
-  it.skip('will have different claim handles even with the same sourceIds', async function () {
+  /* it.skip('will have different claim handles even with the same sourceIds', async function () {
     const sourceId = 'sameSourceIds'
     const claim = await Claim.create_with_message(sourceId, message)
     const claim2 = await Claim.create_with_message(sourceId, message)
-    // assert.notEqual(claim.handle, claim2.handle)
-  })
+    assert.notEqual(claim.handle, claim2.handle)
+  }) */
 
   it.skip('deserialize is a static method', async function () {
     const sourceId = 'deserializeStatic'
@@ -163,7 +163,7 @@ describe('An Claim', async function () {
     const sourceId = 'Claim'
     const claim = await Claim.create_with_message(sourceId, message)
     try {
-      await claim.sendRequest (releasedConnection)
+      await claim.sendRequest(releasedConnection)
     } catch (error) {
       assert.equal(error.toString(), 'Error: vcx_??? -> ' + Error.INVALID_CONNECTION_HANDLE)
     }
