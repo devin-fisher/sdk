@@ -33,7 +33,7 @@ export interface IClaimOfferParams {
   attr: IClaimOfferVCXAttributes
 }
 
-interface IClaimOfferMessage {
+/* interface IClaimOfferMessage {
   msg_type: string,
   version: string,
   to_did: string,
@@ -46,30 +46,43 @@ interface IClaimOfferMessage {
   claim_name: string,
   claim_id: string,
   msg_ref_id: any
-}
+} */
+
+/* Example claim offer message
+{ source_id: 'SerializeDeserialize',
+  state: 3,
+  claim_name: null,
+  claim_request: null,
+  claim_offer:
+   { msg_type: 'CLAIM_OFFER',
+     version: '0.1',
+     to_did: 'LtMgSjtFcyPwenK9SHCyb8',
+     from_did: 'LtMgSjtFcyPwenK9SHCyb8',
+     claim: { account_num: [Array], name_on_account: [Array] },
+     schema_seq_no: 48,
+     issuer_did: 'Pd4fnFtRBcMKRVC2go5w3j',
+     claim_name: 'Account Certificate',
+     claim_id: '3675417066',
+     msg_ref_id: null },
+  link_secret_alias: 'main',
+  msg_uid: null,
+  agent_did: null,
+  agent_vk: null,
+  my_did: null,
+  my_vk: null,
+  their_did: null,
+  their_vk: null }
+*/
 
 export interface IClaimOfferData {
-  source_id: string,
-  handle: number,
-  schema_seq_no: number,
-  claim_attributes: string,
-  claim_name: string,
-  issuer_did: string,
-  state: StateType
+  source_id: string
 }
 
 export type IClaimOffer = string
 
 export interface IClaimCreateData {
   sourceId: string,
-  offer: IClaimOffer
-}
-
-export type IClaimOffer = string
-
-export interface IClaimCreateData {
-  sourceId: string,
-  offer: IClaimOffer
+  message: IClaimOffer
 }
 
 export class Claim extends VCXBaseWithState {
@@ -78,17 +91,13 @@ export class Claim extends VCXBaseWithState {
   protected _getStFn = rustAPI().vcx_claim_get_state
   protected _serializeFn = rustAPI().vcx_claim_serialize
   protected _deserializeFn = rustAPI().vcx_claim_deserialize
-  private _schemaNum: number
-  private _issuerDID: string
-  private _claimName: string
-  private _attr: IClaimOfferVCXAttributes
 
-  constructor (sourceId, { schemaNum, claimName, attr }: IClaimOfferParams) {
-    super(sourceId)
-    this._schemaNum = schemaNum
-    this._claimName = claimName
-    this._attr = attr
-  }
+  /**
+   * Use the base class constructor that takes one parameter
+   * constructor (sourceId) {
+   *  super(sourceId)
+   * }
+   */
 
   /**
    * @memberof Claim
@@ -122,22 +131,13 @@ export class Claim extends VCXBaseWithState {
    * { sourceId: "48", attr: {key: "value"}, claimName: "Account Certificate"}
    * @returns {Promise<Claim>} A Claim Object
    */
-  static async create_with_message (sourceId: string, message: string): Promise<Claim> {
-    /* TODO: ensure the parsed JSON message contains all required fields */
-    const offerJSON: IClaimOfferMessage = JSON.parse(message)
-    const attrsVCX: IClaimOfferVCXAttributes = Object.keys(offerJSON.claim || {})
-      .reduce((accum, attrKey) => ({ ...accum, [attrKey]: [offerJSON.claim[attrKey][0]] }), {})
-    const claim = new Claim(sourceId, {
-      attr: attrsVCX,
-      claimName: offerJSON.claim_name,
-      schemaNum: offerJSON.schema_seq_no
-    })
-    const offer = message
+  static async create_with_message ({ sourceId, message }: IClaimCreateData): Promise<Claim> {
+    const claim = new Claim(sourceId)
     try {
       await claim._create((cb) => rustAPI().vcx_claim_create_with_offer(
         0,
         sourceId,
-        offer,
+        message,
         cb
         )
       )
@@ -149,13 +149,7 @@ export class Claim extends VCXBaseWithState {
 
   static async deserialize (claimData: IClaimOfferData) {
     try {
-      const attr = JSON.parse(claimData.claim_attributes)
-      const params: IClaimOfferParams = {
-        attr,
-        claimName: claimData.claim_name,
-        schemaNum: claimData.schema_seq_no
-      }
-      const claim = await super._deserialize<Claim, IClaimOfferParams>(Claim, claimData, params)
+      const claim = await super._deserialize<Claim, {}>(Claim, claimData)
       return claim
     } catch (err) {
       throw new VCXInternalError(`vcx_issuer_claim_deserialize -> ${err}`)
@@ -230,14 +224,6 @@ export class Claim extends VCXBaseWithState {
   }
 
   get claimName () {
-    return this._claimName
-  }
-
-  get issuerDid () {
-    return this._issuerDID
-  }
-
-  get attr () {
-    return this._attr
+    return 'Account Certificate'
   }
 }
