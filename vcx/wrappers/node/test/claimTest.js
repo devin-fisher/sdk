@@ -32,19 +32,19 @@ describe('A Claim', function () {
   })
 
   it('can be created.', async () => {
-    const obj = await Claim.create('Test', JSON.stringify(OFFER))
+    const obj = await Claim.create({sourceId: 'Test', offer: JSON.stringify(OFFER)})
     assert(obj)
   })
 
   it('can be serialized.', async () => {
-    const obj = await Claim.create('Test', JSON.stringify(OFFER))
+    const obj = await Claim.create({sourceId: 'Test', offer: JSON.stringify(OFFER)})
     assert(obj)
     const val = await obj.serialize()
     assert(val)
   })
 
   it('can be deserialized.', async () => {
-    const obj = await Claim.create('Test', JSON.stringify(OFFER))
+    const obj = await Claim.create({sourceId: 'Test', offer: JSON.stringify(OFFER)})
     assert(obj)
     const val = await obj.serialize()
     assert(val)
@@ -53,7 +53,7 @@ describe('A Claim', function () {
   })
 
   it('can get state.', async () => {
-    const obj = await Claim.create('Test', JSON.stringify(OFFER))
+    const obj = await Claim.create({sourceId: 'Test', offer: JSON.stringify(OFFER)})
     assert(obj)
     const state = await obj.getState()
     console.log(state)

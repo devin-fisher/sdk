@@ -45,19 +45,19 @@ describe('A Claim', function () {
   })
 
   it('can be created.', async () => {
-    const obj = await DisclosedProof.create('Test', REQ)
+    const obj = await DisclosedProof.create({sourceId: 'Test', request: REQ})
     assert(obj)
   })
 
   it('can be serialized.', async () => {
-    const obj = await DisclosedProof.create('Test', REQ)
+    const obj = await DisclosedProof.create({sourceId: 'Test', request: REQ})
     assert(obj)
     const val = await obj.serialize()
     assert(val)
   })
 
   it('can be deserialized.', async () => {
-    const obj = await DisclosedProof.create('Test', REQ)
+    const obj = await DisclosedProof.create({sourceId: 'Test', request: REQ})
     assert(obj)
     const val = await obj.serialize()
     assert(val)
@@ -66,7 +66,7 @@ describe('A Claim', function () {
   })
 
   it('can get state.', async () => {
-    const obj = await DisclosedProof.create('Test', REQ)
+    const obj = await DisclosedProof.create({sourceId: 'Test', request: REQ})
     assert(obj)
     const state = await obj.getState()
     console.log(state)
