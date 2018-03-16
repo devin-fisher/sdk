@@ -35,6 +35,7 @@ struct ReturnShare {
     prover_did: String,
     prover_vk: String,
     state: VcxStateType,
+    share: Option<RecoveryShare>,
     nonce: String,
     remote_did: String,
     remote_vk: String,
@@ -102,15 +103,16 @@ impl ReturnShare {
 
         let payload = messages::get_message::get_ref_msg(&self.msg_uid, &self.prover_did, &self.prover_vk, &self.agent_did, &self.agent_vk)?;
 
-        let share = match parse_trust_payload(&payload) {
-            Err(_) => return Ok(error::SUCCESS.code_num),
+        match parse_trust_payload(&payload) {
+            Err(_) => Ok(error::SUCCESS.code_num),
             Ok(x) => {
                 self.state = VcxStateType::VcxStateAccepted;
-                x
+                self.share = Some(x);
+                Ok(error::SUCCESS.code_num)
             },
-        };
+        }
 
-        Ok(error::SUCCESS.code_num)
+
     }
 
     fn update_state(&mut self) {
@@ -118,6 +120,17 @@ impl ReturnShare {
     }
 
     fn get_state(&self) -> u32 {let state = self.state as u32; state}
+
+    fn get_share_val(&self) -> Result<String, u32> {
+        match self.share {
+            Some(ref s) => {
+                Ok(s.value.to_owned())
+            },
+            None => {
+                Err(10)
+            }
+        }
+    }
 }
 
 pub fn create_request_share(source_id: Option<String>) -> Result<u32, u32> {
@@ -134,6 +147,7 @@ pub fn create_request_share(source_id: Option<String>) -> Result<u32, u32> {
         prover_did: String::new(),
         prover_vk: String::new(),
         state: VcxStateType::VcxStateNone,
+        share: None,
         nonce: generate_nonce()?,
         remote_did: String::new(),
         remote_vk: String::new(),
@@ -170,6 +184,13 @@ pub fn get_state(handle: u32) -> u32 {
     match HANDLE_MAP.lock().unwrap().get(&handle) {
         Some(t) => t.get_state(),
         None => VcxStateType::VcxStateNone as u32,
+    }
+}
+
+pub fn get_share_val(handle:u32) -> Result<String, u32> {
+    match HANDLE_MAP.lock().unwrap().get(&handle) {
+        Some(t) => t.get_share_val(),
+        None => Err(error::INVALID_OBJ_HANDLE.code_num),
     }
 }
 

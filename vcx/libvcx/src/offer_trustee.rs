@@ -365,6 +365,7 @@ pub mod tests {
     use utils::httpclient;
     use utils::dkms_constants::*;
 
+    #[ignore]
     #[test]
     fn full_trustee_offer_test() {
         ::utils::logger::LoggerUtils::init();

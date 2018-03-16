@@ -23,6 +23,11 @@ use settings;
 
 use utils::error;
 
+use request_share;
+
+use serde_json::Value;
+use utils::libindy;
+
 const S3_BUCKET:&'static str = "dkms-dhs-demo";
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -158,6 +163,20 @@ pub fn do_restore(request_shares_handles: &str) -> Result<u32, u32> {
 
     println!("{:?}", handles);
 
+    let mut shares: Vec<Value> = Vec::default();
+    for handle in handles {
+        let share = request_share::get_share_val(handle)?;
+
+
+        let share_json = json!({"value": share});
+        shares.push(share_json);
+    }
+
+    let shares =  serde_json::to_string_pretty(&shares).unwrap();
+    println!("shares:{}",shares);
+    let secret = libindy::sss::libindy_recover_secret_from_shards(&shares)?;
+    println!("secret:{}", secret);
+
 //    unimplemented!()
     Ok(error::SUCCESS.code_num)
 }
@@ -166,18 +185,18 @@ pub fn do_restore(request_shares_handles: &str) -> Result<u32, u32> {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_backup_files() {
+//    #[test]
+//    fn test_backup_files() {
+//
+//
+//        let files = vec![String::from("/tmp/file1")];
+//
+//        backup_identity_files(files, "VERKEY").unwrap();
+//    }
 
-
-        let files = vec![String::from("/tmp/file1")];
-
-        backup_identity_files(files, "VERKEY").unwrap();
-    }
-
-    #[test]
-    fn do_restore_test() {
-        do_restore(r#"[234,4234,54352234,532534]"#).unwrap();
-    }
+//    #[test]
+//    fn do_restore_test() {
+//        do_restore(r#"[234,4234,54352234,532534]"#).unwrap();
+//    }
 
 }

@@ -5,7 +5,7 @@ use self::libc::c_char;
 use std::ffi::CString;
 use utils::timeout::TimeoutUtils;
 use utils::libindy::{ indy_function_eval };
-use utils::libindy::return_types::{ Return_I32_BIN, Return_I32_OPTSTR_BIN };
+use utils::libindy::return_types::{ Return_I32_BIN, Return_I32_OPTSTR_BIN, Return_I32_STR};
 use utils::libindy::error_codes::{ map_indy_error_code, map_string_error };
 use utils::error;
 use settings;
@@ -38,6 +38,14 @@ extern {
                  message_raw: *const u8,
                  message_len: u32,
                  cb: Option<extern fn(xcommand_handle: i32, err: i32, signature_raw: *const u8, signature_len: u32)>) -> i32;
+
+    fn indy_create_key(command_handle: i32,
+                       wallet_handle: i32,
+                       key_json: *const c_char,
+                       cb: Option<extern fn(xcommand_handle: i32,
+                                            err: i32,
+                                            verkey: *const c_char)>
+    ) -> i32;
 }
 
 pub fn prep_msg(wallet_handle: i32, sender_vk: &str, recipient_vk: &str, msg: &[u8]) -> Result<Vec<u8>, u32> {
@@ -130,6 +138,22 @@ pub fn sign(wallet_handle: i32, their_did: &str, msg: &[u8]) -> Result<Vec<u8>, 
     }
 
     rtn_obj.receive(TimeoutUtils::some_long())
+}
+
+pub fn libindy_create_key(wallet_handle: i32, key_json: &str) -> Result<String, u32>
+{
+    let rtn_obj = Return_I32_STR::new()?;
+    let key_json = CString::new(key_json).map_err(map_string_error)?;
+    unsafe {
+        indy_function_eval(
+            indy_create_key(rtn_obj.command_handle,
+                            wallet_handle,
+                            key_json.as_ptr(),
+                            Some(rtn_obj.get_callback()))
+        ).map_err(map_indy_error_code)?;
+    }
+
+    rtn_obj.receive(TimeoutUtils::some_long()).and_then(check_str)
 }
 
 fn check_str(str_opt: Option<String>) -> Result<String, u32>{

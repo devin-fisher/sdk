@@ -36,9 +36,10 @@ use dkms::constants::{DEV_GENESIS_NODE_TXNS,
 use dkms::constants;
 use dkms::actor::Actor;
 use dkms::util::{print_chapter, find_actor, pr_json, send_via_file, receive_via_file, should_print_wait_msg};
-use utils::wallet::wallet_file;
+use utils::wallet::wallet_file_path;
 
 use vcx::settings::DEFAULT_GENESIS_PATH;
+use vcx::utils::libindy;
 
 const INVITE_CUNION_ALICE_PATH: &'static str = "/tmp/cunion-alice-invite.json";
 const INVITE_BOB_ALICE_PATH: &'static str = "/tmp/alice-bob-invite.json";
@@ -46,6 +47,8 @@ const INVITE_ALICE_DAKOTA_PATH: &'static str = "/tmp/alice-dakota-invite.json";
 
 const INVITE_RECOVERY_BOB_ALICE_PATH: &'static str = "/tmp/recovery-alice-bob-invite.json";
 const INVITE_RECOVERY_CUNION_ALICE_PATH: &'static str = "/tmp/recovery-alice-cunion-invite.json";
+
+const POOL_NAME: &'static str = "dkms_pool";
 
 lazy_static! {
     static ref DB: Mutex<HashMap<String, String>> = Default::default();
@@ -183,7 +186,7 @@ fn prep_backup_file(actor: &Actor, actor_dir: &Path) -> String {
     db_write_file(actor_dir);
     rtn.push(actor_dir.join("DB"));
     rtn.push(actor_dir.join("config.json"));
-    rtn.push(wallet_file(&asset_name(actor)).unwrap());
+    rtn.push(wallet_file_path(&asset_name(actor)).unwrap());
 
     serde_json::to_string(&rtn).unwrap()
 }
@@ -811,9 +814,71 @@ fn chapter_5_demo(actor: &Actor, _dir_path: &Path) {
 }
 
 fn init_policy(_agent_key: &str, _recovery_verkey: &str) -> Result<String, u32> {
+    let w_h = vcx::utils::libindy::wallet::get_wallet_handle();
+    let p_h = vcx::utils::libindy::pool::get_pool_handle().unwrap();
+    let new_policy = libindy::authz::libindy_create_and_store_new_policy(w_h).unwrap();
+    println!("**Policy:{}", new_policy);
+
+    let new_policy:Value = serde_json::from_str(&new_policy).unwrap();
+    let address = new_policy["address"].as_str().unwrap();
+
+    println!("**Address: {}", address);
+
+    let agent_vk = vcx::settings::get_config_value(
+        vcx::settings::CONFIG_AGENT_POLICY_VERKEY).unwrap();
+    let recovery_vk = vcx::settings::get_config_value(
+        vcx::settings::CONFIG_RECOVERY_VERKEY).unwrap();
+
+    let vk = libindy::authz::libindy_add_new_agent_to_policy(w_h,
+                                                             address,
+                                                             &agent_vk,
+                                                             true).unwrap();
+
+    println!("verkey from call: {}", vk);
+
+    let vk = libindy::authz::libindy_add_new_agent_to_policy(w_h,
+                                                             address,
+                                                             &recovery_vk,
+                                                             true).unwrap();
+    println!("verkey from call: {}", vk);
+
+    let new_policy = libindy::authz::libindy_get_policy(w_h, address).unwrap();
+
+    println!("**Policy:{}", new_policy);
+    let new_policy:Value = serde_json::from_str(&new_policy).unwrap();
+
+    let recovery_comm = new_policy["agents"][&recovery_vk]["double_commitment"].as_str().unwrap();
+    let agent_comm = new_policy["agents"][&agent_vk]["double_commitment"].as_str().unwrap();
+
+    println!("comms: \nrec:{}\nagent:{}\n", recovery_comm, agent_comm);
 
 
-    Ok(String::from("NOT GENERATED YET"))
+    let add_recovery_txn = libindy::ledger::libindy_build_agent_authz_request(
+        &recovery_vk,
+        "175", //address,
+        &recovery_vk,
+        -1,
+        "127"//recovery_comm
+    ).unwrap();
+
+    let add_agent_txn = libindy::ledger::libindy_build_agent_authz_request(
+        &recovery_vk,
+        address,
+        &agent_vk,
+        2,
+        agent_comm
+    ).unwrap();
+
+    println!("**Add REC KEY TXN: {}", add_recovery_txn);
+    println!("**Add AGENT KEY TXN: {}", add_agent_txn);
+
+    let result = libindy::ledger::libindy_sign_and_submit_request(p_h,
+                                                                  w_h,
+                                                                  recovery_vk.to_owned(),
+                                                                  add_recovery_txn).unwrap();
+    println!("**submit results: {}", result);
+
+    Ok(String::from(address))
 }
 
 fn init_pool() {
@@ -833,6 +898,7 @@ fn init_actor(actor: &Actor, dir: &Path) {
     print_chapter("INIT ACTOR", None);
     println!("Setuping {:?}'s wallet and configuration.", actor);
     wallet::add_wallet_entries(Some(asset_name(actor).as_str()),
+                               Some(POOL_NAME),
                                wallet_entries(actor)
     ).unwrap();
     println!("Wallet Setup is done.");
@@ -844,10 +910,10 @@ fn init_actor(actor: &Actor, dir: &Path) {
     let wallet_name = asset_name(actor);
     let config = json!(
         {
-            "pool_name":"dkms_pool",
-            "wallet_name":wallet_name,
+            "pool_name": POOL_NAME,
+            "wallet_name": wallet_name,
             "enterprise_name": format!("{}", actor),
-            "logo_url":logo_url,
+            "logo_url": logo_url,
             "wallet_key": "",
 
             "agent_endpoint": actor_config.agent_endpoint,

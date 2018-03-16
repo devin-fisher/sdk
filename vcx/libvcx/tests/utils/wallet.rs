@@ -8,29 +8,36 @@ use self::rusqlcipher::types::ToSql;
 use std::env::home_dir;
 use self::vcx::utils::libindy::wallet;
 
-fn wallet_default_file() -> Result<PathBuf, String> {
-    wallet_file("wallet1")
+fn _wallet_default_file() -> Result<PathBuf, String> {
+    wallet_file("wallet1", None)
 }
 
-pub fn wallet_file(wallet_name: &str) -> Result<PathBuf, String> {
-    let rtn = home_dir().unwrap()
-        .join(Path::new(".indy_client/wallet"))
-        .join(Path::new(wallet_name))
-        .join(Path::new("sqlite.db"));
-
+pub fn wallet_file(wallet_name: &str, pool_name: Option<&str>) -> Result<PathBuf, String> {
+    let rtn = wallet_file_path(wallet_name)?;
     if !rtn.exists() {
         println!("Creating wallet '{}' at {:?}", wallet_name, rtn);
-        wallet::create_wallet("POOL1",wallet_name, None, None, None)
+        wallet::create_wallet(pool_name.unwrap_or("POOL1"),
+                              wallet_name,
+                              None,
+                              None,
+                              None)
             .or(Err(format!("Unable to create wallet '{}' at {:?}", wallet_name, rtn)))?;
     }
 
     Ok(rtn)
 }
 
-fn open_wallet_db(wallet_name: Option<&str>) -> Result<Connection, String> {
+pub fn wallet_file_path(wallet_name: &str) -> Result<PathBuf, String> {
+    Ok(home_dir().unwrap()
+        .join(Path::new(".indy_client/wallet"))
+        .join(Path::new(wallet_name))
+        .join(Path::new("sqlite.db")))
+}
+
+fn open_wallet_db(wallet_name: Option<&str>, pool_name: Option<&str>) -> Result<Connection, String> {
     let db_file = match wallet_name {
-        Some(name) => wallet_file(name)?,
-        None => wallet_default_file()?
+        Some(name) => wallet_file(name, pool_name)?,
+        None => _wallet_default_file()?
     };
 
     println!("Opening wallet at {:?}", db_file);
@@ -38,21 +45,21 @@ fn open_wallet_db(wallet_name: Option<&str>) -> Result<Connection, String> {
         .or(Err("Unable to connect to the wallet".to_string()))
 }
 
-pub fn add_wallet_entry(wallet_name: Option<&str>, params: &[&ToSql]) -> Result<(), String> {
-    let conn = open_wallet_db(wallet_name)?;
+pub fn add_wallet_entry(wallet_name: Option<&str>, pool_name: Option<&str>, params: &[&ToSql]) -> Result<(), String> {
+    let conn = open_wallet_db(wallet_name, pool_name)?;
     conn.execute("INSERT OR REPLACE INTO wallet VALUES (?,?,?)", params).map(|_|())
         .or(Err("Unable to add wallet entry".to_string()))
 }
 
-pub fn add_wallet_entry_str(wallet_name: Option<&str>, key: &str, value: &str, timestamp: &str, ) -> Result<(), String> {
-    add_wallet_entry(wallet_name, &[&key.to_string(), &value.to_string(), &timestamp.to_string()])
+pub fn add_wallet_entry_str(wallet_name: Option<&str>, pool_name: Option<&str>, key: &str, value: &str, timestamp: &str, ) -> Result<(), String> {
+    add_wallet_entry(wallet_name, pool_name, &[&key.to_string(), &value.to_string(), &timestamp.to_string()])
 }
 
-pub fn add_wallet_entries(wallet_name: Option<&str>, insert_val: &[[&str;3]]) -> Result<(), String> {
+pub fn add_wallet_entries(wallet_name: Option<&str>, pool_name: Option<&str>, insert_val: &[[&str;3]]) -> Result<(), String> {
     println!("Adding wallet entries");
     for entry in insert_val {
         println!("Adding entry for {}", entry[0]);
-        add_wallet_entry_str(wallet_name, &entry[0], &entry[1], &entry[2])?;
+        add_wallet_entry_str(wallet_name, pool_name, &entry[0], &entry[1], &entry[2])?;
     }
     Ok(())
 }
@@ -74,7 +81,7 @@ mod tests {
     fn add_test(){
         let wallet_name = "wallet_test_9098";
         wallet::delete_wallet(wallet_name).unwrap_or(());
-        add_wallet_entries(Some(wallet_name), TEST_ENTRIES).unwrap();
+        add_wallet_entries(Some(wallet_name), None, TEST_ENTRIES).unwrap();
         wallet::delete_wallet(wallet_name).unwrap_or(());
     }
 }
