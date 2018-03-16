@@ -65,6 +65,13 @@ export interface IClaimCreateData {
   offer: IClaimOffer
 }
 
+export type IClaimOffer = string
+
+export interface IClaimCreateData {
+  sourceId: string,
+  offer: IClaimOffer
+}
+
 export class Claim extends VCXBaseWithState {
   protected _releaseFn = rustAPI().vcx_claim_release
   protected _updateStFn = rustAPI().vcx_claim_update_state
