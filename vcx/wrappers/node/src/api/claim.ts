@@ -3,11 +3,19 @@ import { Callback } from 'ffi'
 import { VCXInternalError } from '../errors'
 import { rustAPI } from '../rustlib'
 import { createFFICallbackPromise } from '../utils/ffi-helpers'
+import { StateType } from './common'
 import { Connection } from './connection'
 import { VCXBaseWithState } from './VCXBaseWithState'
 
 export interface IClaimStructData {
   source_id: string,
+}
+
+export type IClaimOffer = string
+
+export interface IClaimCreateData {
+  sourceId: string,
+  offer: IClaimOffer
 }
 
 export class Claim extends VCXBaseWithState {
@@ -17,11 +25,7 @@ export class Claim extends VCXBaseWithState {
   protected _serializeFn = rustAPI().vcx_claim_serialize
   protected _deserializeFn = rustAPI().vcx_claim_deserialize
 
-  constructor (sourceId) {
-    super(sourceId)
-  }
-
-  static async create (sourceId: string, offer: string): Promise<Claim> {
+  static async create ({ sourceId, offer }: IClaimCreateData): Promise<Claim> {
     const claim = new Claim(sourceId)
     try {
       await claim._create((cb) => rustAPI().vcx_claim_create_with_offer(
@@ -46,8 +50,8 @@ export class Claim extends VCXBaseWithState {
     }
   }
 
-  static async new_offers (connection: Connection): Promise<string> {
-    return await createFFICallbackPromise<string>(
+  static async new_offers (connection: Connection): Promise<IClaimOffer[]> {
+    const offersStr = await createFFICallbackPromise<string>(
       (resolve, reject, cb) => {
         const rc = rustAPI().vcx_claim_new_offers(0, connection.handle, cb)
         if (rc) {
@@ -62,9 +66,11 @@ export class Claim extends VCXBaseWithState {
         }
       })
     )
+    const offers = JSON.parse(offersStr)
+    return offers
   }
 
-  async getState (): Promise<number> {
+  async getState (): Promise<StateType> {
     try {
       return await this._getState()
     } catch (error) {

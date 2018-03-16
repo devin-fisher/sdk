@@ -27,6 +27,12 @@ export interface IRecipientInfo {
   id: string
 }
 
+export type IConnectionInvite = string
+
+export interface IRecipientInviteInfo extends IRecipientInfo {
+  invite: IConnectionInvite
+}
+
 export interface IConnectOptions {
   phone?: string,
   timeout?: number
@@ -76,12 +82,12 @@ export class Connection extends VCXBaseWithState {
    * {id: "123"}
    * @returns {Promise<Connection>} A Connection Object
    */
-  static async create_with_invite ( recipientInfo: IRecipientInfo, invite: string): Promise<Connection> {
-    const connection = new Connection(recipientInfo.id)
+  static async create_with_invite ({ id, invite }: IRecipientInviteInfo): Promise<Connection> {
+    const connection = new Connection(id)
     const commandHandle = 0
     try {
       await connection._create((cb) => rustAPI().vcx_connection_create_with_invite(commandHandle,
-                                                 recipientInfo.id, invite, cb))
+                                                 id, invite, cb))
 
       return connection
     } catch (err) {
@@ -186,9 +192,9 @@ export class Connection extends VCXBaseWithState {
    * @description Gets the state of the connection.
    * @async
    * @function getState
-   * @returns {Promise<number>}
+   * @returns {Promise<StateType>}
    */
-  async getState (): Promise<number> {
+  async getState (): Promise<StateType> {
     try {
       return await this._getState()
     } catch (error) {
@@ -204,9 +210,9 @@ export class Connection extends VCXBaseWithState {
    * @function inviteDetails
    * @returns {Promise<string>} - String with the details
    */
-  async inviteDetails (abbr: boolean = false): Promise<string> {
+  async inviteDetails (abbr: boolean = false): Promise<IConnectionInvite> {
     try {
-      const data: string = await this._inviteDetails(abbr)
+      const data = await this._inviteDetails(abbr)
       return data
     } catch (err) {
       throw new VCXInternalError(`vcx_connection_invite_details -> ${err}`)

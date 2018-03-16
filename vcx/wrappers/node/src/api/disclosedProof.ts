@@ -3,11 +3,19 @@ import { Callback } from 'ffi'
 import { VCXInternalError } from '../errors'
 import { rustAPI } from '../rustlib'
 import { createFFICallbackPromise } from '../utils/ffi-helpers'
+import { StateType } from './common'
 import { Connection } from './connection'
 import { VCXBaseWithState } from './VCXBaseWithState'
 
 export interface IDisclosedProofData {
   source_id: string,
+}
+
+export type IDisclosedProofRequest = string
+
+export interface IDisclosedProofCreateData {
+  sourceId: string,
+  request: IDisclosedProofRequest
 }
 
 export class DisclosedProof extends VCXBaseWithState {
@@ -17,11 +25,7 @@ export class DisclosedProof extends VCXBaseWithState {
   protected _serializeFn = rustAPI().vcx_disclosed_proof_serialize
   protected _deserializeFn = rustAPI().vcx_disclosed_proof_deserialize
 
-  constructor (sourceId) {
-    super(sourceId)
-  }
-
-  static async create (sourceId: string, request: string): Promise<DisclosedProof> {
+  static async create ({ sourceId, request }: IDisclosedProofCreateData): Promise<DisclosedProof> {
     const newObj = new DisclosedProof(sourceId)
     try {
       await newObj._create((cb) => rustAPI().vcx_disclosed_proof_create_with_request(
@@ -46,8 +50,8 @@ export class DisclosedProof extends VCXBaseWithState {
     }
   }
 
-  static async new_requests (connection: Connection): Promise<string> {
-    return await createFFICallbackPromise<string>(
+  static async new_requests (connection: Connection): Promise<IDisclosedProofRequest[]> {
+    const requestsStr = await createFFICallbackPromise<string>(
       (resolve, reject, cb) => {
         const rc = rustAPI().vcx_disclosed_proof_new_requests(0, connection.handle, cb)
         if (rc) {
@@ -62,9 +66,11 @@ export class DisclosedProof extends VCXBaseWithState {
         }
       })
     )
+    const requests = JSON.parse(requestsStr)
+    return requests
   }
 
-  async getState (): Promise<number> {
+  async getState (): Promise<StateType> {
     try {
       return await this._getState()
     } catch (error) {

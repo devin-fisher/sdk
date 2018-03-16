@@ -160,9 +160,9 @@ export class Proof extends VCXBaseWithState {
    * @async
    * @memberof Proof
    * @function getState
-   * @returns {Promise<number>}
+   * @returns {Promise<StateType>}
    */
-  async getState (): Promise<number> {
+  async getState (): Promise<StateType> {
     try {
       return await this._getState()
     } catch (error) {

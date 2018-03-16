@@ -7,6 +7,12 @@ export interface IRecoveryShares {
   source_id: string,
 }
 
+export interface IRecoverySharesCreateData {
+  sourceId: string,
+  count: number,
+  threshold: number
+}
+
 export class RecoveryShares extends VCXBase {
   protected _releaseFn = rustAPI().vcx_recovery_shares_release
   protected _serializeFn = rustAPI().vcx_recovery_shares_serialize
@@ -16,7 +22,7 @@ export class RecoveryShares extends VCXBase {
     super(sourceId)
   }
 
-  static async create (sourceId: string, count: number, threshold: number): Promise<RecoveryShares> {
+  static async create ({ sourceId, count, threshold }: IRecoverySharesCreateData): Promise<RecoveryShares> {
     const shares = new RecoveryShares(sourceId)
     const commandHandle = 0
     try {
