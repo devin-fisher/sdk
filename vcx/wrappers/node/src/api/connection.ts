@@ -82,7 +82,7 @@ export class Connection extends VCXBaseWithState {
    * {id: "123"}
    * @returns {Promise<Connection>} A Connection Object
    */
-  static async create_with_invite ({ id, invite }: IRecipientInviteInfo): Promise<Connection> {
+  static async create_with_message ({ id, invite }: IRecipientInviteInfo): Promise<Connection> {
     const connection = new Connection(id)
     const commandHandle = 0
     try {
