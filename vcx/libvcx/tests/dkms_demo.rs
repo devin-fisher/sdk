@@ -732,8 +732,17 @@ fn chapter_5_demo(actor: &Actor, _dir_path: &Path) {
 
             println!("Having been contacted by Alice, Bob revokes Alice's phone");
 
+            let agent_list = api_caller::u32_r_u32_str(trustee_h,
+                                      vcx::api::trustee::vcx_trustee_list_agents).unwrap().unwrap();
+
+            println!("Bob has the following agent that he can revoke");
+            println!("{}", agent_list);
+
+            let agent_verkey: Value = serde_json::from_str(&agent_list).unwrap();
+            let agent_verkey = agent_verkey[0]["verkey"].as_str().unwrap();
+
             api_caller::u32_str_r_u32(trustee_h,
-                                          "asdfasdfasdf",
+                                      agent_verkey,
                                           vcx::api::trustee::vcx_trustee_revoke_device).unwrap();
 
 
@@ -813,72 +822,83 @@ fn chapter_5_demo(actor: &Actor, _dir_path: &Path) {
     }
 }
 
-fn init_policy(_agent_key: &str, _recovery_verkey: &str) -> Result<String, u32> {
-    let w_h = vcx::utils::libindy::wallet::get_wallet_handle();
-    let p_h = vcx::utils::libindy::pool::get_pool_handle().unwrap();
-    let new_policy = libindy::authz::libindy_create_and_store_new_policy(w_h).unwrap();
-    println!("**Policy:{}", new_policy);
 
-    let new_policy:Value = serde_json::from_str(&new_policy).unwrap();
-    let address = new_policy["address"].as_str().unwrap();
-
-    println!("**Address: {}", address);
-
-    let agent_vk = vcx::settings::get_config_value(
-        vcx::settings::CONFIG_AGENT_POLICY_VERKEY).unwrap();
-    let recovery_vk = vcx::settings::get_config_value(
-        vcx::settings::CONFIG_RECOVERY_VERKEY).unwrap();
-
-    let vk = libindy::authz::libindy_add_new_agent_to_policy(w_h,
-                                                             address,
-                                                             &agent_vk,
-                                                             true).unwrap();
-
-    println!("verkey from call: {}", vk);
-
-    let vk = libindy::authz::libindy_add_new_agent_to_policy(w_h,
-                                                             address,
-                                                             &recovery_vk,
-                                                             true).unwrap();
-    println!("verkey from call: {}", vk);
-
-    let new_policy = libindy::authz::libindy_get_policy(w_h, address).unwrap();
-
-    println!("**Policy:{}", new_policy);
-    let new_policy:Value = serde_json::from_str(&new_policy).unwrap();
-
-    let recovery_comm = new_policy["agents"][&recovery_vk]["double_commitment"].as_str().unwrap();
-    let agent_comm = new_policy["agents"][&agent_vk]["double_commitment"].as_str().unwrap();
-
-    println!("comms: \nrec:{}\nagent:{}\n", recovery_comm, agent_comm);
-
-
-    let add_recovery_txn = libindy::ledger::libindy_build_agent_authz_request(
-        &recovery_vk,
-        "175", //address,
-        &recovery_vk,
-        -1,
-        "127"//recovery_comm
+fn _get_current_policy(w_h: i32, p_h: i32, verkey: &str, address: &str) -> Result<Value, u32> {
+    let get_policy_txn = libindy::ledger::libindy_build_get_agent_authz_request(
+        &verkey,
+        address
     ).unwrap();
-
-    let add_agent_txn = libindy::ledger::libindy_build_agent_authz_request(
-        &recovery_vk,
-        address,
-        &agent_vk,
-        2,
-        agent_comm
-    ).unwrap();
-
-    println!("**Add REC KEY TXN: {}", add_recovery_txn);
-    println!("**Add AGENT KEY TXN: {}", add_agent_txn);
 
     let result = libindy::ledger::libindy_sign_and_submit_request(p_h,
                                                                   w_h,
-                                                                  recovery_vk.to_owned(),
-                                                                  add_recovery_txn).unwrap();
-    println!("**submit results: {}", result);
+                                                                  verkey.to_owned(),
+                                                                  get_policy_txn).unwrap();
 
-    Ok(String::from(address))
+    let result: Value = serde_json::from_str(&result).or(Err(88 as u32)).unwrap();
+    Ok(result)
+}
+
+
+fn refresh_policy(w_h: i32, p_h: i32, verkey: &str, address: &str) -> Result<(), u32> {
+
+
+    let policy: Value = _get_current_policy(w_h, p_h, verkey, address)?;
+
+    println!("Dirty Policy: \n{}", serde_json::to_string_pretty(&policy).unwrap());
+
+    let data = policy["result"]["data"].as_array().unwrap();
+
+    for auth in data {
+        let agent_verkey = auth[0].as_str().ok_or(88 as u32)?;
+        let auth_level = auth[1].as_u64().ok_or(88 as u32)?;
+        if auth_level == 0 {
+            continue;
+        }
+        if agent_verkey.eq(verkey) {
+            continue;
+        }
+
+        let update_txn = libindy::ledger::libindy_build_agent_authz_request(
+            verkey,
+            address,
+            agent_verkey,
+            0,
+            None
+        ).unwrap();
+
+        let result = libindy::ledger::libindy_sign_and_submit_request(p_h,
+                                                                      w_h,
+                                                                      verkey.to_owned(),
+                                                                      update_txn).unwrap();
+    }
+
+
+    let policy: Value = _get_current_policy(w_h, p_h, verkey, address).unwrap();
+    println!("Clean Policy: \n{}", serde_json::to_string_pretty(&policy).unwrap());
+
+    Ok(())
+
+}
+
+fn init_policy(address: &str) -> Result<(), u32> {
+    let wallet_name = "CLEAN_POLICY";
+
+    let p_h = vcx::utils::libindy::pool::libindy_open_pool_ledger(POOL_NAME, None).unwrap();
+    vcx::utils::libindy::wallet::create_wallet(POOL_NAME, wallet_name, None, None, None).unwrap();
+    let w_h = vcx::utils::libindy::wallet::open_wallet(wallet_name, None, None).unwrap();
+
+    let recovery_vk = vcx::utils::libindy::crypto::libindy_create_key(w_h,
+                                                    r#"{"seed": "4F7BsTMVPKFshM1MwLf6y23cid6fL3xMpfDaTHZtNLTr"}"#
+    ).unwrap();
+
+
+    refresh_policy(w_h, p_h, &recovery_vk, address)?;
+
+    vcx::utils::libindy::wallet::close_wallet(w_h).unwrap();
+    vcx::utils::libindy::wallet::delete_wallet(wallet_name).unwrap();
+    vcx::utils::libindy::pool::libindy_close_pool_ledger(p_h).unwrap();
+
+    Ok(())
 }
 
 fn init_pool() {
@@ -908,6 +928,11 @@ fn init_actor(actor: &Actor, dir: &Path) {
     let random_int: u32 = rand::random();
     let logo_url = format!("https://robohash.org/{}?set=set3", random_int);
     let wallet_name = asset_name(actor);
+
+    if let &Actor::Alice = actor {
+        let policy_address = init_policy(&actor_config.identity_policy_address).unwrap();
+    }
+
     let config = json!(
         {
             "pool_name": POOL_NAME,
@@ -925,8 +950,8 @@ fn init_actor(actor: &Actor, dir: &Path) {
             "enterprise_verkey": actor_config.enterprise_verkey,
             "agent_pairwise_did": actor_config.agent_pairwise_did,
             "agent_pairwise_verkey": actor_config.agent_pairwise_verkey,
-//            "identity_policy_address": config.identity_policy_address,
-            "agent_policy_verkey": actor_config.agent_policy_verkey,
+            "identity_policy_address": actor_config.identity_policy_address,
+//            "agent_policy_verkey": actor_config.agent_policy_verkey,
             "recovery_verkey": actor_config.recovery_verkey,
         }
     );
@@ -945,14 +970,6 @@ fn init_actor(actor: &Actor, dir: &Path) {
     println!("Starting VCX!");
     api_caller::str_r_check(config_file_path.to_str().unwrap(), vcx::api::vcx::vcx_init).unwrap();
     thread::sleep(time::Duration::from_millis(10));
-
-
-    if let &Actor::Alice = actor {
-        let policy_address = init_policy(&actor_config.agent_policy_verkey,
-                                         &actor_config.recovery_verkey).unwrap();
-
-        vcx::settings::set_config_value(vcx::settings::CONFIG_IDENTITY_POLICY_ADDRESS, &policy_address);
-    }
 
 }
 

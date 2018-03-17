@@ -4,8 +4,14 @@ use super::MsgVersion;
 use super::TrusteeMsgType;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AgentDescr {
+    pub verkey: String,
+    pub name: String
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RecoveryShareHint {
-    pub theshold: Option<u32>,
+    pub threshold: Option<u32>,
     pub trustees: Option<Vec<String>>
 }
 
@@ -24,4 +30,5 @@ pub struct TrusteeData {
     pub msg_type: TrusteeMsgType,
     pub address: String,
     pub share: RecoveryShare,
+    pub agents: Option<Vec<AgentDescr>>
 }

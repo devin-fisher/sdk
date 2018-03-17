@@ -84,8 +84,7 @@ fn _prep_file(file_path: &str, verkey: &str) -> Result<Vec<u8>, u32> {
     let mut rtn: Vec<u8> = Default::default();
     f.read_to_end(&mut rtn).or(Err(102 as u32))?;
 
-    verkey.len();
-    let rtn = rtn.clone(); //Encrypt !!
+    let rtn = libindy::crypto::prep_anonymous_msg(verkey, &rtn[..])?; //Encrypt !!
     Ok(rtn)
 }
 
@@ -125,7 +124,7 @@ fn _backup_manifest(manifest: BackupManifest, verkey: &str) -> Result<(), u32> {
         s3_bucket: String::from(S3_BUCKET),
     };
     let data = serde_json::to_vec(&manifest).or(Err(104 as u32))?;
-    let data = data.clone(); //ENCRYPT
+    let data = libindy::crypto::prep_anonymous_msg(verkey, &data[..])?; //ENCRYPT
 
     _send_to_s3(data, &entry)
 }
@@ -174,11 +173,41 @@ pub fn do_restore(request_shares_handles: &str) -> Result<u32, u32> {
 
     let shares =  serde_json::to_string_pretty(&shares).unwrap();
     println!("shares:{}",shares);
-    let secret = libindy::sss::libindy_recover_secret_from_shards(&shares)?;
-    println!("secret:{}", secret);
+    let verkey = _recover_key(&shares)?;
 
-//    unimplemented!()
+    _restore_files(&verkey)?;
     Ok(error::SUCCESS.code_num)
+}
+
+pub fn _restore_files(verkey: &str) -> Result<(), u32> {
+    Ok(())
+}
+
+pub fn _recover_key(shares_json: &str) -> Result<String, u32> {
+    let secret_json: Value = _sss_recovery(shares_json)?;
+
+    let seed = secret_json["seed"].as_str().ok_or(error::INVALID_JSON.code_num)?;
+    let verkey = secret_json["verkey"].as_str().ok_or(error::INVALID_JSON.code_num)?;
+
+    let w_h = libindy::wallet::get_wallet_handle();
+    let key_json = json!({"seed": seed});
+    let key_json = serde_json::to_string(&key_json).or(Err(error::INVALID_JSON.code_num))?;
+    let new_verkey = libindy::crypto::libindy_create_key(w_h, &key_json)?;
+
+    if new_verkey.eq(verkey) {
+        Ok(new_verkey)
+    } else {
+        Err(10000)
+    }
+
+}
+
+pub fn _sss_recovery(shares_json: &str) -> Result<Value, u32> {
+    let secret = libindy::sss::libindy_recover_secret_from_shards(&shares_json)?;
+
+    println!("secret: {}", secret);
+
+    serde_json::from_str(&secret).or(Err(error::INVALID_JSON.code_num))
 }
 
 #[cfg(test)]
@@ -198,5 +227,7 @@ mod tests {
 //    fn do_restore_test() {
 //        do_restore(r#"[234,4234,54352234,532534]"#).unwrap();
 //    }
+
+
 
 }

@@ -33,7 +33,7 @@ pub struct ConfigInfo {
     pub agent_pairwise_verkey: String,
     pub agent_enterprise_verkey: String,
     pub identity_policy_address: String,
-    pub agent_policy_verkey: String,
+//    pub agent_policy_verkey: String,
     pub recovery_verkey: String,
 }
 
@@ -51,8 +51,8 @@ pub fn config_info(actor: &Actor) -> ConfigInfo {
                 enterprise_verkey: String::from("EUFDEw2ZoJnJh3Ni7nW7de2F9cGH8NAU9ixkAcj4Xdn7"),
                 agent_pairwise_did: String::from("D21h4rojfACty4EUH4FCQg"),
                 agent_pairwise_verkey: String::from("7YtvPnhSYfF5a6DQb9AsGKEs1eYK6uXx7nUkSAPUZdX8"),
-                identity_policy_address: String::from("SDFSDFSDFSDF"),
-                agent_policy_verkey: String::from("F5xT9jRfsbm3GQLcLB1SCP539debmD9mN95VoYjYF4HX"),
+                identity_policy_address: String::from("175"),
+//                agent_policy_verkey: String::from("F5xT9jRfsbm3GQLcLB1SCP539debmD9mN95VoYjYF4HX"),
                 recovery_verkey: String::from("CXEbaQLPZoiLr17tKd6KkHcGjhzk8dUr4JEx82fdvN8Z"),
             }
         },
@@ -68,7 +68,7 @@ pub fn config_info(actor: &Actor) -> ConfigInfo {
                 agent_pairwise_did: String::from("2zitW92wBcvPt4TCiU2UvB"),
                 agent_pairwise_verkey: String::from("265D1cR241omRUCnHiBFs1JZXvCMaLUJDqrvgSMUkXVH"),
                 identity_policy_address: String::new(),
-                agent_policy_verkey: String::from("7AkE14sGDknmzxZC63BDSkm9HmCou1Nwx5aPgh2iEeFP"),
+//                agent_policy_verkey: String::from("7AkE14sGDknmzxZC63BDSkm9HmCou1Nwx5aPgh2iEeFP"),
                 recovery_verkey: String::from("At8x8WDMCrmJbxD1KWo7S51L87vFBehAfvnfMpfGcaQg"),
             }
         },
@@ -84,7 +84,7 @@ pub fn config_info(actor: &Actor) -> ConfigInfo {
                 agent_pairwise_did: String::from("Qy7pkD729Dj5XSeZCNMyU5"),
                 agent_pairwise_verkey: String::from("E4fMq1DV55k4FcPZCGQ68xLExF4pM4ALYtresjW8qZdx"),
                 identity_policy_address: String::new(),
-                agent_policy_verkey: String::from("C5CZ2AQLdNQPFJAWLnGWJ85BWCVCGdiGp1GCrNtHStoX"),
+//                agent_policy_verkey: String::from("C5CZ2AQLdNQPFJAWLnGWJ85BWCVCGdiGp1GCrNtHStoX"),
                 recovery_verkey: String::from("EEu1sdgWR55xsXbVoiJ8zi4v8LPbBLqpDSyAZUHUYQox"),
             }
         },
@@ -100,7 +100,7 @@ pub fn config_info(actor: &Actor) -> ConfigInfo {
                 agent_pairwise_did: String::from("PWSoWzotn79Y2BSovgubZz"),
                 agent_pairwise_verkey: String::from("DGWgmV8MgMA1ptd294thrns3mHBE9N9Nfy5okHLz8Sb9"),
                 identity_policy_address: String::new(),
-                agent_policy_verkey: String::from("EgENwWrTW5zjSkSFWqg8orK3kzwiESLmQTDY6Dt9Tajp"),
+//                agent_policy_verkey: String::from("EgENwWrTW5zjSkSFWqg8orK3kzwiESLmQTDY6Dt9Tajp"),
                 recovery_verkey: String::from("Ageo5PwVFdaQjSszNT9hsfPA4szCFq4sT378mfUnaNtL"),
             }
         },
@@ -116,7 +116,7 @@ pub fn config_info(actor: &Actor) -> ConfigInfo {
                 agent_pairwise_did: String::from("9jUpkVPHNnjH2W8PKKs3dQ"),
                 agent_pairwise_verkey: String::from("5m3pgiWkHFnTnTvNtVpQjfTQ6SpDrJVkaN8XUUjfVYVg"),
                 identity_policy_address: String::new(),
-                agent_policy_verkey: String::from("EdVjJ7Ym9DU7mcgUQRoBEDZJHf1FPmmuw5MZZt2aAFEJ"),
+//                agent_policy_verkey: String::from("EdVjJ7Ym9DU7mcgUQRoBEDZJHf1FPmmuw5MZZt2aAFEJ"),
                 recovery_verkey: String::from("3kQC49LLPApgeSBRoHrX4JgW9rvDiihYAZsyHWRpzP4n"),
             }
         },
@@ -162,14 +162,19 @@ pub fn wallet_entries(actor: &Actor) -> &[[&str;3]] {
                     r#"{"claim":{"owner_name":["Alice Smith","62816810226936654797779705000772968058283780124309077049681734835796332704413"],"year":["2018","9580575055681116735701888307693311696919443567981152550712229354087663885817"],"owner_address":["3569 Gore Street, Avon TN 44011","19384535770851212988443221030781497988507752636414290798260257632744461817193"],"make":["Toyota","77773225235315955558310796460870215037784467515149914108705163467072509007141"],"vin":["1G1ZC5E06CF170071","101673737806105001323898372608061717291339196162267977960883483742024720265360"],"model":["Avalon","24353634147174945122309475759963277096559197779347496000626523599657091347240"]},"schema_seq_no":60,"signature":{"primary_claim":{"m2":"45958957404117505648367358814000150357753869676087912822918363518712519643231","a":"18778739794006702946179521171277315373595687285107578835178426320831733838860837382510481567095007271116914913168435554640603937508873835773291013292535003488646081587872060434522343016333764874000801026788348127693390257989236153353495275191396021723498905721833309475527550796720960825303135801260174801987427983223003830205284702730412283344695735618367401776749003842874324848898399422431906110642776735650052850473182631277577091611061721412493578822861761630484468340039190882176751548981743800556125663282778366124218885267859860918775871393199181621319713464483999741525381882822650258079170743147804957390352","e":"259344723055062059907025491480697571938277889515152306249728583105665800713306759149981690559193987143012367913206299323899696942213235956742929747120560815032865983652957581182037","v":"9653060866891869998606827892063221125366091611714992704418680346308352505820771017169955013119434880693420450129906253269406809569116785606436681461529612198079410429168918909742578748814089725565106828430429497016980360915520951246902892747937823599437349637217124405442180588025353312928503074426584233963974257610284532200881568909419880047440883256242714897032852476489498923980751643176330526279707357525472495295696343986436692659097932516045781693622728076224475419111237638485497576658426230670862262846279526963798837127047026006689232829163592474928073519409333896089522764749924669615846536753393562852931437976471325496780224805451877058888245532538621712298103227783309261882908405615606694069028561459684709140707384555118553919551314866580272817899498080946456866161246435461182293325708058766123377591087"},"non_revocation_claim":null},"issuer_did":"Niaxv2v4mPr1HdTeJkQxuU"}"#,
                     "2018-03-01 18:02:11"
                 ],
-                [
-                    "key::F5xT9jRfsbm3GQLcLB1SCP539debmD9mN95VoYjYF4HX",
-                    r#"{"verkey":"F5xT9jRfsbm3GQLcLB1SCP539debmD9mN95VoYjYF4HX","signkey":"xt19s1sp2UZCGhy9rNyb1FtxdKiDGZZPPWbEpqU41PZEyYbm9VofTjQuxHzrFQrFt3EDN9nUnpeorpNEAP9GRGm"}"#,
-                    "2018-03-08 23:37:05"
-                ],
+//                [
+//                    "key::F5xT9jRfsbm3GQLcLB1SCP539debmD9mN95VoYjYF4HX",
+//                    r#"{"verkey":"F5xT9jRfsbm3GQLcLB1SCP539debmD9mN95VoYjYF4HX","signkey":"xt19s1sp2UZCGhy9rNyb1FtxdKiDGZZPPWbEpqU41PZEyYbm9VofTjQuxHzrFQrFt3EDN9nUnpeorpNEAP9GRGm"}"#,
+//                    "2018-03-08 23:37:05"
+//                ],
                 [
                     "key::CXEbaQLPZoiLr17tKd6KkHcGjhzk8dUr4JEx82fdvN8Z",
                     r#"{"verkey":"CXEbaQLPZoiLr17tKd6KkHcGjhzk8dUr4JEx82fdvN8Z","signkey":"xt19s1sp2UZCGhy9rNyb1FtxdKiDGZZPPWbEpqU41PZVe97gcA89iRV4drh4sg311Nz3w9FbRDpz4w9QZk1TgN5"}"#,
+                    "2018-03-08 23:37:05"
+                ],
+                [
+                    "authz_address::175",
+                    r#"{"address":"175","agents":{}}"#,
                     "2018-03-08 23:37:05"
                 ],
             ]

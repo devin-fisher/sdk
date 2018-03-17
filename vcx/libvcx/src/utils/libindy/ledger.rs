@@ -1,7 +1,7 @@
 extern crate libc;
 use self::libc::c_char;
 use std::ffi::CString;
-use utils::libindy::indy_function_eval;
+use utils::libindy::{indy_function_eval, option_cstring_as_ptn};
 use utils::libindy::SigTypes;
 use utils::libindy::return_types::Return_I32_STR;
 use utils::libindy::error_codes::{map_indy_error_code, map_string_error};
@@ -221,13 +221,17 @@ pub fn libindy_build_agent_authz_request(submitter: &str,
                                          address: &str,
                                          verkey: &str,
                                          auth: i32,
-                                         comm: &str) -> Result<String, u32>
+                                         comm: Option<&str>) -> Result<String, u32>
 {
     let rtn_obj = Return_I32_STR::new()?;
     let submitter = CString::new(submitter).map_err(map_string_error)?;
     let address = CString::new(address).map_err(map_string_error)?;
     let verkey = CString::new(verkey).map_err(map_string_error)?;
-    let comm = CString::new(comm).map_err(map_string_error)?;
+
+    let comm = match comm {
+        Some(s) => Some(CString::new(s).map_err(map_string_error)?),
+        None => None
+    };
 
     unsafe {
         indy_function_eval(
@@ -236,7 +240,7 @@ pub fn libindy_build_agent_authz_request(submitter: &str,
                                            address.as_ptr(),
                                            verkey.as_ptr(),
                                            auth,
-                                           comm.as_ptr(),
+                                           option_cstring_as_ptn(&comm),
                                            Some(rtn_obj.get_callback()))
         ).map_err(map_indy_error_code)?;
     }

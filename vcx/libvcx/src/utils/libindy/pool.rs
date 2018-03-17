@@ -12,6 +12,7 @@ use utils::libindy::{indy_function_eval};
 use utils::libindy::return_types::{Return_I32, Return_I32_I32};
 use utils::json::JsonEncodable;
 use utils::libindy::error_codes::{map_indy_error_code, map_string_error};
+use utils::libindy::option_cstring_as_ptn;
 use std::sync::RwLock;
 use std::time::Duration;
 use utils::timeout::TimeoutUtils;
@@ -56,6 +57,44 @@ extern {
                               handle: i32,
                               cb: Option<extern fn(xcommand_handle: i32, err: i32)>) -> i32;
 }
+//
+//pub fn lib () -> Result<(), u32> {
+//
+//}
+
+pub fn libindy_open_pool_ledger(name: &str, config: Option<&str>) -> Result<i32, u32>{
+    let rtn_obj = Return_I32_I32::new()?;
+
+    let name = CString::new(name).map_err(map_string_error)?;
+    let config = match config {
+        Some(s) => Some(CString::new(s).map_err(map_string_error)?),
+        None => None
+    };
+
+    unsafe {
+        indy_function_eval(
+            indy_open_pool_ledger(rtn_obj.command_handle,
+                                  name.as_ptr(),
+                                  option_cstring_as_ptn(&config),
+                                  Some(rtn_obj.get_callback()))
+        ).map_err(map_indy_error_code)?;
+    }
+    rtn_obj.receive(TimeoutUtils::some_long())
+}
+
+pub fn libindy_close_pool_ledger(handle: i32) -> Result<(), u32> {
+    let rtn_obj = Return_I32::new()?;
+
+    unsafe {
+        indy_function_eval(
+            indy_close_pool_ledger(rtn_obj.command_handle,
+                                   handle,
+                                   Some(rtn_obj.get_callback()))
+        ).map_err(map_indy_error_code)?;
+    }
+    rtn_obj.receive(TimeoutUtils::some_long())
+}
+
 
 fn test_pool_ip() -> String { env::var("TEST_POOL_IP").unwrap_or("127.0.0.1".to_string()) }
 

@@ -10,6 +10,9 @@ use utils::libindy::error_codes::{map_indy_error_code, map_string_error};
 use utils::timeout::TimeoutUtils;
 use utils::libindy::option_cstring_as_ptn;
 use utils::error;
+use utils::libindy::crypto;
+use utils::libindy::pool;
+use utils::libindy::authz::{update_verkey_in_policy, Permission};
 
 pub static mut WALLET_HANDLE: i32 = 0;
 
@@ -101,6 +104,40 @@ pub fn init_wallet(wallet_name: &str) -> Result<i32, u32> {
             }
         },
     };
+
+    //** DKMS ADDITION **
+    match settings::get_config_value(settings::CONFIG_AGENT_POLICY_VERKEY) {
+        Ok(_) => warn!("Has CONFIG_AGENT_POLICY_VERKEY, will not create one"),
+        Err(_) => {
+            let agent_verkey = crypto::libindy_create_key(wallet_handle, "{}").map_err(|x|{
+                x as u32
+            })?;
+            warn!("Creating agent key: {}", agent_verkey);
+            settings::set_config_value(settings::CONFIG_AGENT_POLICY_VERKEY, &agent_verkey);
+            match settings::get_config_value(settings::CONFIG_IDENTITY_POLICY_ADDRESS) {
+                Ok(addr) => {
+                    if !addr.is_empty() {
+                        warn!("Adding Agent key to Policy via recovery key");
+                        let p_h = pool::get_pool_handle().unwrap();
+
+                        let recovery_vk = settings::get_config_value(
+                            settings::CONFIG_RECOVERY_VERKEY).expect("Expected RECOVERY_VERKEY");
+
+                        update_verkey_in_policy(wallet_handle,
+                                                p_h,
+                                                &recovery_vk,
+                                                &agent_verkey,
+                                                &addr,
+                                                Permission::Prove,
+                                                true)?;
+                    }
+                },
+                Err(_) =>()
+            }
+        },
+
+    };
+
 
     unsafe {
         WALLET_HANDLE = wallet_handle; //TODO this is a bad idea, consider Option<std::sync::atomic::AtomicI32>

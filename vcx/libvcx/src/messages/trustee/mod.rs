@@ -72,7 +72,7 @@ pub mod tests {
                 tag: String::from("ze4152Bsxo90"),
                 value: String::from("abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ123456789"),
                 hint: Some(RecoveryShareHint{
-                    theshold: Some(3),
+                    threshold: Some(3),
                     trustees: Some(vec![String::from("Mike L"),
                                         String::from("Lovesh"),
                                         String::from("Corin"),
@@ -80,6 +80,7 @@ pub mod tests {
                                         String::from("Drummond")]),
                 }),
             },
+            agents: None,
         };
 
         let test_data = serde_json::to_value(&data).unwrap();
@@ -103,7 +104,8 @@ pub mod tests {
                 "Drummond"
               ]
             }
-          }
+          },
+          "agetns": null
         });
         println!("{}", serde_json::to_string_pretty(&test_data).unwrap());
         println!("{}", serde_json::to_string_pretty(&expect_data).unwrap());

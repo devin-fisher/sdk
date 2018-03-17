@@ -16,11 +16,13 @@ use messages::extract_json_payload;
 
 use messages::trustee::offer::TrusteeOffer;
 use messages::trustee::request::TrusteeRequest;
-use messages::trustee::data::{TrusteeData, RecoveryShare};
+use messages::trustee::data::{TrusteeData, RecoveryShare, AgentDescr};
 use messages::trustee::{MsgVersion, TrusteeMsgType};
 
 use utils::libindy::wallet;
+use utils::libindy::pool;
 use utils::libindy::crypto;
+use utils::libindy::authz;
 
 use settings;
 use utils::option_util::expect_ok_or;
@@ -235,6 +237,49 @@ impl Trustee {
             }
         }
     }
+
+    fn list_agents(&self) -> Result<String, u32> {
+        let rtn = match self.trustee_data {
+            Some(ref data) => {
+                let empty: Vec<AgentDescr> = Vec::default();
+                let agents = data.agents.as_ref().unwrap_or(&empty);
+                let rtn = serde_json::to_string_pretty(agents)
+                    .or(Err(error::INVALID_JSON.code_num))?;
+                rtn
+            }
+            None => String::from("[]")
+        };
+        Ok(rtn)
+    }
+
+    fn revoke_agents(&self, verkey: &str) -> Result<(), u32> {
+        match self.trustee_data {
+            Some(ref data) => {
+                let empty: Vec<AgentDescr> = Vec::default();
+                let agents = data.agents.as_ref().unwrap_or(&empty);
+
+                for agent in agents {
+                    if agent.verkey.eq(verkey) {
+                        let p_h = pool::get_pool_handle()?;
+                        let w_h = wallet::get_wallet_handle();
+                        let addr = data.address.as_ref();
+                        let trustee_verkey = settings::get_config_value(settings::CONFIG_AGENT_POLICY_VERKEY)?;
+
+                        return authz::update_verkey_in_policy(w_h,
+                                                      p_h,
+                                                      &trustee_verkey,
+                                                      agent.verkey.as_ref(),
+                                                      addr,
+                                                      authz::Permission::None,
+                                                      false);
+                    }
+                }
+
+                Err(10001)
+            }
+            None => Err(10001)
+        }
+    }
 }
 
 //********************************************
@@ -288,13 +333,14 @@ pub fn get_state(handle: u32) -> Result<u32, u32> {
 
 pub fn list_agents(handle: u32) -> Result<String, u32> {
     HANDLE_MAP.get_mut(handle, |obj| {
-        Ok(String::from("[]")) // TODO get device list
+        obj.list_agents()
     }).map_err(handle_err)
 }
 
 pub fn revoke_key(handle: u32, agent_verkey: &str) -> Result<u32, u32> {
     HANDLE_MAP.get_mut(handle, |obj| {
-        Ok(error::SUCCESS.code_num) // TODO revoke agent
+        obj.revoke_agents(agent_verkey)?;
+        Ok(error::SUCCESS.code_num)
     }).map_err(handle_err)
 }
 

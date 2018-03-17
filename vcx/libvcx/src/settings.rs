@@ -60,9 +60,9 @@ pub fn set_defaults() -> u32 {
     settings.set_default(CONFIG_ENTERPRISE_VERKEY,"2zoa6G7aMfX8GnUEpDxxunFHE7fZktRiiHk1vgMRH2tm");
     settings.set_default(CONFIG_GENESIS_PATH, DEFAULT_GENESIS_PATH);
     settings.set_default(CONFIG_WALLET_KEY,UNINITIALIZED_WALLET_KEY);
-    settings.set_default(CONFIG_IDENTITY_POLICY_ADDRESS, "");
-    settings.set_default(CONFIG_RECOVERY_VERKEY, "");
-    settings.set_default(CONFIG_AGENT_POLICY_VERKEY, "");
+//    settings.set_default(CONFIG_IDENTITY_POLICY_ADDRESS, "");
+//    settings.set_default(CONFIG_RECOVERY_VERKEY, "");
+//    settings.set_default(CONFIG_AGENT_POLICY_VERKEY, "");
 
     error::SUCCESS.code_num
 }

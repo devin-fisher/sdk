@@ -15,7 +15,7 @@ use messages::send_message::parse_msg_uid;
 use messages::trustee::{MsgVersion, TrusteeMsgType, TrusteeCapability};
 use messages::trustee::offer::TrusteeOffer;
 use messages::trustee::request::TrusteeRequest;
-use messages::trustee::data::{TrusteeData, RecoveryShare, RecoveryShareHint};
+use messages::trustee::data::{TrusteeData, RecoveryShare, RecoveryShareHint, AgentDescr};
 use connection;
 use serde_json::Value;
 use settings;
@@ -24,6 +24,10 @@ use utils::option_util::expect_ok_or;
 
 use utils::httpclient;
 use utils::constants::SEND_MESSAGE_RESPONSE;
+
+use utils::libindy::authz;
+use utils::libindy::wallet;
+use utils::libindy::pool;
 
 
 lazy_static! {
@@ -194,7 +198,17 @@ impl OfferTrustee {
 
         for key in &req.authorization_keys {
 
-            //TODO add key to policy
+            let w_h = wallet::get_wallet_handle();
+            let p_h = pool::get_pool_handle()?;
+            let recovery_key = settings::get_config_value(settings::CONFIG_RECOVERY_VERKEY)?;
+
+            authz::update_verkey_in_policy(w_h,
+                                           p_h,
+                                           &recovery_key,
+                                           &key,
+                                           &address,
+                                           authz::Permission::ProveRevoke,
+                                           false )?;
         }
 
         Ok(())
@@ -202,6 +216,7 @@ impl OfferTrustee {
 
     fn _generate_trustee_data(&self, recovery_shares_handle: u32) -> Result<Value, u32> {
         let address = settings::get_config_value(settings::CONFIG_IDENTITY_POLICY_ADDRESS)?;
+        let agent_key = settings::get_config_value(settings::CONFIG_AGENT_POLICY_VERKEY)?;
         if address.is_empty() {
             warn!("Identity Address is blank");
             return Err(error::INVALID_OPTION.code_num);
@@ -223,10 +238,14 @@ impl OfferTrustee {
                 tag: String::new(),
                 value: share_val,
                 hint: Some(RecoveryShareHint{
-                    theshold: None,
+                    threshold: None,
                     trustees: None,
                 }),
             },
+            agents: Some(vec![AgentDescr{
+                verkey: agent_key,
+                name: String::from("Phone"),
+            }]),
         };
         Ok(serde_json::to_value(&rtn).or(Err(error::INVALID_JSON.code_num))?)
     }
