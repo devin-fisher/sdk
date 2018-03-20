@@ -113,7 +113,7 @@ impl IssuerClaim {
             },
             Ok(response) => {
                 self.msg_uid = parse_msg_uid(&response[0])?;
-                self.state = VcxStateType::VcxStateOfferSent;
+                self.state = VcxStateType::VcxStateSent;
                 info!("sent claim offer for: {}", self.handle);
                 return Ok(error::SUCCESS.code_num);
             }
@@ -230,7 +230,7 @@ impl IssuerClaim {
         if self.state == VcxStateType::VcxStateRequestReceived {
             return Ok(error::SUCCESS.code_num);
         }
-        else if self.state != VcxStateType::VcxStateOfferSent || self.msg_uid.is_empty() || self.issued_did.is_empty() {
+        else if self.state != VcxStateType::VcxStateSent || self.msg_uid.is_empty() || self.issued_did.is_empty() {
 
             return Ok(error::SUCCESS.code_num);
         }
@@ -525,7 +525,7 @@ pub mod tests {
             issuer_did: "QTrbV4raAcND4DWWzBmdsh".to_owned(),
             issued_did: "8XFh8yBzrpJQmNyZzgoTqB".to_owned(),
             issued_vk: VERKEY.to_string(),
-            state: VcxStateType::VcxStateOfferSent,
+            state: VcxStateType::VcxStateSent,
             claim_name: DEFAULT_CLAIM_NAME.to_owned(),
             claim_request: Some(claim_req.to_owned()),
             claim_id: String::from(DEFAULT_CLAIM_ID),
@@ -600,7 +600,7 @@ pub mod tests {
                                          "{\"attr\":\"value\"}".to_owned()).unwrap();
 
         assert_eq!(send_claim_offer(handle, connection_handle).unwrap(), error::SUCCESS.code_num);
-        assert_eq!(get_state(handle), VcxStateType::VcxStateOfferSent as u32);
+        assert_eq!(get_state(handle), VcxStateType::VcxStateSent as u32);
         assert_eq!(get_offer_uid(handle).unwrap(), "ntc2ytb");
     }
 
@@ -667,7 +667,7 @@ pub mod tests {
             issuer_did: "QTrbV4raAcND4DWWzBmdsh".to_owned(),
             issued_did: "8XFh8yBzrpJQmNyZzgoTqB".to_owned(),
             issued_vk: VERKEY.to_string(),
-            state: VcxStateType::VcxStateOfferSent,
+            state: VcxStateType::VcxStateSent,
             claim_request: Some(claim_req.to_owned()),
             claim_name: DEFAULT_CLAIM_NAME.to_owned(),
             claim_id: String::from(DEFAULT_CLAIM_ID),

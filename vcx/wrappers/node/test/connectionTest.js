@@ -72,7 +72,7 @@ describe('A Connection object with ', function () {
     const inviteDetails = await connection.connect({ sms: true })
     assert(inviteDetails)
     await connection.updateState()
-    assert.equal(await connection.getState(), StateType.OfferSent)
+    assert.equal(await connection.getState(), StateType.Sent)
     let data = await connection.serialize()
     assert.notEqual(data, null)
     assert.equal(data.handle, connection._handle)
@@ -110,7 +110,7 @@ describe('A Connection object with ', function () {
     const inviteDetails = await connection.connect({ sms: true })
     assert(inviteDetails)
     await connection.updateState()
-    assert.equal(await connection.getState(), StateType.OfferSent)
+    assert.equal(await connection.getState(), StateType.Sent)
     let data = await connection.serialize()
     const connection2 = await Connection.deserialize(data)
     assert.equal(connection2._handle, connection._handle)
@@ -125,7 +125,7 @@ describe('A Connection object with ', function () {
     const inviteDetails = await connection.connect({ sms: true })
     assert(inviteDetails)
     await connection.updateState()
-    assert.equal(await connection.getState(), StateType.OfferSent)
+    assert.equal(await connection.getState(), StateType.Sent)
   })
 
   it('call to updateState where no connection exists should have a state value of 0', async () => {
@@ -183,7 +183,7 @@ describe('A Connection object with ', function () {
     const inviteDetails = await connection.connect({ sms: true })
     assert(inviteDetails)
     const result = await connection.serialize()
-    assert.equal(result['state'], StateType.OfferSent)
+    assert.equal(result['state'], StateType.Sent)
   })
 
   const connectionCreateCheckAndDelete = async () => {

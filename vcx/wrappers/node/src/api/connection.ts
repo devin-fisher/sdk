@@ -30,7 +30,7 @@ export interface IRecipientInfo {
 export type IConnectionInvite = string
 
 export interface IRecipientInviteInfo extends IRecipientInfo {
-  invite: IConnectionInvite
+  message: IConnectionInvite
 }
 
 export interface IConnectOptions {
@@ -82,12 +82,12 @@ export class Connection extends VCXBaseWithState {
    * {id: "123"}
    * @returns {Promise<Connection>} A Connection Object
    */
-  static async create_with_message ({ id, invite }: IRecipientInviteInfo): Promise<Connection> {
+  static async create_with_message ({ id, message }: IRecipientInviteInfo): Promise<Connection> {
     const connection = new Connection(id)
     const commandHandle = 0
     try {
       await connection._create((cb) => rustAPI().vcx_connection_create_with_invite(commandHandle,
-                                                 id, invite, cb))
+                                                 id, message, cb))
 
       return connection
     } catch (err) {

@@ -100,7 +100,7 @@ impl OfferTrustee {
             },
             Ok(response) => {
                 self.msg_uid = parse_msg_uid(&response[0])?;
-                self.state = VcxStateType::VcxStateOfferSent;
+                self.state = VcxStateType::VcxStateSent;
                 info!("sent trustee offer for: {}", self.handle);
                 return Ok(error::SUCCESS.code_num);
             }
@@ -166,7 +166,7 @@ impl OfferTrustee {
         if self.state == VcxStateType::VcxStateRequestReceived {
             return Ok(error::SUCCESS.code_num);
         }
-        else if self.state != VcxStateType::VcxStateOfferSent || self.msg_uid.is_empty() || self.issued_did.is_empty() {
+        else if self.state != VcxStateType::VcxStateSent || self.msg_uid.is_empty() || self.issued_did.is_empty() {
 
             return Ok(error::SUCCESS.code_num);
         }

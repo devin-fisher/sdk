@@ -186,7 +186,7 @@ impl Claim {
             .send_secure() {
             Ok(response) => {
                 self.msg_uid = Some(parse_msg_uid(&response[0])?);
-                self.state = VcxStateType::VcxStateOfferSent;
+                self.state = VcxStateType::VcxStateSent;
                 return Ok(error::SUCCESS.code_num)
             },
             Err(x) => {
@@ -239,7 +239,7 @@ impl Claim {
 
     fn update_state(&mut self) {
         match self.state {
-            VcxStateType::VcxStateOfferSent => {
+            VcxStateType::VcxStateSent => {
                 //Check for messages
                 let _ = self._check_msg();
             },

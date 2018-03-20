@@ -58,7 +58,7 @@ describe('A Trustee', function () {
     assert(obj)
     const state = await obj.getState()
     console.log(state)
-    assert(state === StateType.RequestReceived)
+    assert(state === StateType.Received)
   })
 
   it('can get offers.', async () => {

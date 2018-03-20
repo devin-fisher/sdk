@@ -20,8 +20,8 @@ export enum Error {
 export enum StateType {
     None = 0,
     Initialized = 1,
-    OfferSent = 2,
-    RequestReceived = 3,
+    Sent = 2,
+    Received = 3,
     Accepted = 4,
     Unfulfilled = 5,
     Expired = 6,
