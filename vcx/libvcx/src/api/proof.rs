@@ -459,7 +459,7 @@ mod tests {
         let connection_handle = connection::build_connection("test_send_proof_request".to_owned()).unwrap();
         assert_eq!(vcx_proof_send_request(0,handle,connection_handle,Some(send_cb)), error::SUCCESS.code_num);
         thread::sleep(Duration::from_millis(1000));
-        assert_eq!(proof::get_state(handle),VcxStateType::VcxStateOfferSent as u32);
+        assert_eq!(proof::get_state(handle),VcxStateType::VcxStateSent as u32);
     }
 
     #[test]

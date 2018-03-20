@@ -84,7 +84,7 @@ enum_number!(VcxStateType
 {
     VcxStateNone = 0,
     VcxStateInitialized = 1,
-    VcxStateOfferSent = 2,
+    VcxStateSent = 2,
     VcxStateRequestReceived = 3,
     VcxStateAccepted = 4,
     VcxStateUnfulfilled = 5,

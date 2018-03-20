@@ -81,7 +81,7 @@ impl ReturnShare {
             .send_secure() {
             Ok(response) => {
                 self.msg_uid = parse_msg_uid(&response[0])?;
-                self.state = VcxStateType::VcxStateOfferSent;
+                self.state = VcxStateType::VcxStateSent;
                 return Ok(error::SUCCESS.code_num)
             },
             Err(x) => {
@@ -96,7 +96,7 @@ impl ReturnShare {
         if self.state == VcxStateType::VcxStateAccepted {
             return Ok(error::SUCCESS.code_num);
         }
-        else if self.state != VcxStateType::VcxStateOfferSent || self.msg_uid.is_empty() || self.prover_did.is_empty() {
+        else if self.state != VcxStateType::VcxStateSent || self.msg_uid.is_empty() || self.prover_did.is_empty() {
             return Ok(error::SUCCESS.code_num);
         }
 

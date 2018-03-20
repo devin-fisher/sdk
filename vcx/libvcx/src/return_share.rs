@@ -133,7 +133,7 @@ impl ReturnShare {
 
     fn update_state(&mut self) {
         match self.state {
-            VcxStateType::VcxStateOfferSent => {
+            VcxStateType::VcxStateSent => {
                 //Check for messages
             },
             VcxStateType::VcxStateAccepted => {

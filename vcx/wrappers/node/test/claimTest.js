@@ -69,18 +69,18 @@ describe('An Claim', async function () {
     const sourceId = 'Bank Claim'
     let connection = await Connection.create({ id: '234' })
     await connection.connect()
-    assert.equal(StateType.OfferSent, await connection.getState())
+    assert.equal(StateType.Sent, await connection.getState())
     const claim = await IssuerClaim.create({ ...config, sourceId })
     await claim.sendOffer(connection)
     await claim.updateState()
-    assert.equal(await claim.getState(), StateType.OfferSent)
+    assert.equal(await claim.getState(), StateType.Sent)
   }) */
 
   it('can be created, then serialized, then deserialized and have the same sourceId, state, and claimHandle', async function () {
     const sourceId = 'SerializeDeserialize'
     const claim = await Claim.create_with_message({ sourceId: sourceId, message: message })
     const jsonClaim = await claim.serialize()
-    assert.equal(jsonClaim.state, StateType.RequestReceived)
+    assert.equal(jsonClaim.state, StateType.Received)
     const claim2 = await Claim.deserialize(jsonClaim)
     // assert.equal(claim.handle, claim2.handle)
     assert.equal(await claim.getState(), await claim2.getState())
@@ -101,7 +101,7 @@ describe('An Claim', async function () {
     const claim2 = await IssuerClaim.deserialize(claimData)
     await claim.updateState()
     await claim2.updateState()
-    assert.equal(await claim.getState(), StateType.OfferSent)
+    assert.equal(await claim.getState(), StateType.Sent)
     assert.equal(await claim.getState(), await claim2.getState())
     assert.equal(claim.handle, claim2.handle)
   }) */
@@ -131,10 +131,10 @@ describe('An Claim', async function () {
   it('deserialize is a static method', async function () {
     const sourceId = 'deserializeStatic'
     const claim = await Claim.create_with_message({ sourceId: sourceId, message: message })
-    assert.equal(await claim.getState(), StateType.RequestReceived)
+    assert.equal(await claim.getState(), StateType.Received)
     const serializedJson = await claim.serialize()
     const claimDeserialized = await Claim.deserialize(serializedJson)
-    assert.equal(await claimDeserialized.getState(), StateType.RequestReceived)
+    assert.equal(await claimDeserialized.getState(), StateType.Received)
   })
 
   it('accepts claim attributes and schema sequence number', async function () {
@@ -181,7 +181,7 @@ describe('An Claim', async function () {
     const sourceId = 'Claim'
     let claim = await Claim.create_with_message({ sourceId: sourceId, message: message })
     await claim.sendRequest(connection)
-    assert.equal(await claim.getState(), StateType.OfferSent)
+    assert.equal(await claim.getState(), StateType.Sent)
     // we serialize and deserialize because this is the only
     // way to fool the libvcx into thinking we've received a
     // valid claim requset.

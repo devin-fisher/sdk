@@ -217,7 +217,7 @@ impl Proof {
             .send_secure() {
             Ok(response) => {
                 self.msg_uid = parse_msg_uid(&response[0])?;
-                self.state = VcxStateType::VcxStateOfferSent;
+                self.state = VcxStateType::VcxStateSent;
                 return Ok(error::SUCCESS.code_num)
             },
             Err(x) => {
@@ -240,7 +240,7 @@ impl Proof {
         if self.state == VcxStateType::VcxStateAccepted {
             return Ok(error::SUCCESS.code_num);
         }
-        else if self.state != VcxStateType::VcxStateOfferSent || self.msg_uid.is_empty() || self.prover_did.is_empty() {
+        else if self.state != VcxStateType::VcxStateSent || self.msg_uid.is_empty() || self.prover_did.is_empty() {
             return Ok(error::SUCCESS.code_num);
         }
 
@@ -548,7 +548,7 @@ mod tests {
             Err(_) => panic!("Proof creation failed"),
         };
         assert_eq!(send_proof_request(handle, connection_handle).unwrap(), error::SUCCESS.code_num);
-        assert_eq!(get_state(handle), VcxStateType::VcxStateOfferSent as u32);
+        assert_eq!(get_state(handle), VcxStateType::VcxStateSent as u32);
         assert_eq!(get_proof_uuid(handle).unwrap(), "ntc2ytb");
     }
 
@@ -616,7 +616,7 @@ mod tests {
             requested_predicates: String::from("[]"),
             prover_did: String::from("GxtnGN6ypZYgEqcftSQFnC"),
             prover_vk: VERKEY.to_string(),
-            state: VcxStateType::VcxStateOfferSent,
+            state: VcxStateType::VcxStateSent,
             proof_state: ProofStateType::ProofUndefined,
             name: String::new(),
             version: String::from("1.0"),
@@ -655,7 +655,7 @@ mod tests {
             requested_predicates: String::from("[]"),
             prover_did: String::from("GxtnGN6ypZYgEqcftSQFnC"),
             prover_vk: VERKEY.to_string(),
-            state: VcxStateType::VcxStateOfferSent,
+            state: VcxStateType::VcxStateSent,
             proof_state: ProofStateType::ProofInvalid,
             name: String::new(),
             version: String::from("1.0"),
@@ -695,7 +695,7 @@ mod tests {
             requested_predicates: String::from("[]"),
             prover_did: String::from("GxtnGN6ypZYgEqcftSQFnC"),
             prover_vk: VERKEY.to_string(),
-            state: VcxStateType::VcxStateOfferSent,
+            state: VcxStateType::VcxStateSent,
             proof_state: ProofStateType::ProofUndefined,
             name: String::new(),
             version: String::from("1.0"),
@@ -758,7 +758,7 @@ mod tests {
             requested_predicates: String::from("[]"),
             prover_did: String::from("GxtnGN6ypZYgEqcftSQFnC"),
             prover_vk: VERKEY.to_string(),
-            state: VcxStateType::VcxStateOfferSent,
+            state: VcxStateType::VcxStateSent,
             proof_state: ProofStateType::ProofUndefined,
             name: String::new(),
             version: String::from("1.0"),
@@ -828,7 +828,7 @@ mod tests {
 //            requested_predicates: String::from("[]"),
 //            prover_did: String::from("GxtnGN6ypZYgEqcftSQFnC"),
 //            prover_vk: VERKEY.to_string(),
-//            state: VcxStateType::VcxStateOfferSent,
+//            state: VcxStateType::VcxStateSent,
 //            proof_state: ProofStateType::ProofUndefined,
 //            name: String::new(),
 //            version: String::from("1.0"),

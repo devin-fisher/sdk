@@ -7,9 +7,9 @@ import { StateType } from './common'
 import { Connection } from './connection'
 import { VCXBaseWithState } from './VCXBaseWithState'
 
-export interface IClaimOfferVCXAttributes {
+/* export interface IClaimOfferVCXAttributes {
   [ index: string ]: [ string ]
-}
+} */
 
 /**
  * @interface
@@ -18,20 +18,16 @@ export interface IClaimOfferVCXAttributes {
  * issuerDid: DID associated with the claim def.
  * attributes: key: [value] list of items offered in claim
  */
-export interface IClaimOfferConfig {
+/* export interface IClaimOfferConfig {
   sourceId: string,
-  schemaNum: number,
-  attr: {
-    IClaimOfferVCXAttributes
-  },
-  claimName: string,
-}
+  claimName: string
+} */
 
-export interface IClaimOfferParams {
+/* export interface IClaimOfferParams {
   schemaNum: number,
   claimName: string,
   attr: IClaimOfferVCXAttributes
-}
+} */
 
 /* interface IClaimOfferMessage {
   msg_type: string,
@@ -80,7 +76,7 @@ export interface IClaimOfferData {
 
 export type IClaimOffer = string
 
-export interface IClaimCreateData {
+export interface IClaimOfferConfig {
   sourceId: string,
   message: IClaimOffer
 }
@@ -98,6 +94,16 @@ export class Claim extends VCXBaseWithState {
    *  super(sourceId)
    * }
    */
+
+  static async create ({ sourceId }: IClaimOfferConfig): Promise<Claim> {
+    const claim = new Claim(sourceId)
+    try {
+      // await claim._create((cb) => () => { 0 })
+      return claim
+    } catch (err) {
+      throw new VCXInternalError(`vcx_claim_create_dummy -> ${err}`)
+    }
+  }
 
   /**
    * @memberof Claim
@@ -127,11 +133,9 @@ export class Claim extends VCXBaseWithState {
    *   "claim_id":"3675417066",
    *   "msg_ref_id":null
    * }
-   * @example <caption>Example of IClaimOfferConfig</caption>
-   * { sourceId: "48", attr: {key: "value"}, claimName: "Account Certificate"}
    * @returns {Promise<Claim>} A Claim Object
    */
-  static async create_with_message ({ sourceId, message }: IClaimCreateData): Promise<Claim> {
+  static async create_with_message ({ sourceId, message }: IClaimOfferConfig): Promise<Claim> {
     const claim = new Claim(sourceId)
     try {
       await claim._create((cb) => rustAPI().vcx_claim_create_with_offer(
@@ -156,6 +160,16 @@ export class Claim extends VCXBaseWithState {
     }
   }
 
+  /**
+   * @memberof Claim
+   * @description Get new received Claim Offers from a given connection
+   * Claim Offer is made up of the data provided in the creation of this object
+   * @async
+   * @function newOffers
+   * @param {Connection} connection
+   * Connection is the object that was created to set up the pairwise relationship.
+   * @returns {Promise<void>}
+   */
   static async new_offers (connection: Connection): Promise<IClaimOffer[]> {
     const offersStr = await createFFICallbackPromise<string>(
       (resolve, reject, cb) => {
