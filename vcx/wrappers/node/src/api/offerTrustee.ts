@@ -145,7 +145,7 @@ export class OfferTrustee extends VCXBaseWithState {
     try {
       await createFFICallbackPromise<void>(
         (resolve, reject, cb) => {
-          const rc = rustAPI().vcx_offer_trustee_send_data(0, this.handle, connection.handle, recoveryShares.handle, cb)
+          const rc = rustAPI().vcx_offer_trustee_send_data(0, this.handle, recoveryShares.handle, connection.handle, cb)
           if (rc) {
             reject(rc)
           }
