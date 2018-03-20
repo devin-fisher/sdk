@@ -69,10 +69,15 @@ impl OfferTrustee {
         self.issued_vk = connection::get_pw_verkey(connection_handle)?;
         self.remote_vk = connection::get_their_pw_verkey(connection_handle)?;
 
-        let offer = self._generate_trustee_offer()?;
-        let payload = match serde_json::to_string(&offer) {
-            Ok(p) => p,
-            Err(_) => return Err(error::INVALID_JSON.code_num)
+        let payload = match settings::test_indy_mode_enabled() {
+            true => {
+                let offer = self._generate_trustee_offer()?;
+                match serde_json::to_string(&offer) {
+                    Ok(p) => p,
+                    Err(_) => return Err(error::INVALID_JSON.code_num)
+                }
+            },
+            false => String::from("dummytestmodedata")
         };
 
         debug!("trustee offer data: {}", payload);
@@ -117,9 +122,16 @@ impl OfferTrustee {
 
         let to = connection::get_pw_did(connection_handle)?;
 
-        self._add_key_to_policy()?;
-        let data = self._generate_trustee_data(recovery_shares_handle)?;
-        let data = serde_json::to_string_pretty(&data).unwrap();
+
+
+        let data = match settings::test_indy_mode_enabled() {
+            true => {
+                self._add_key_to_policy()?;
+                let data = self._generate_trustee_data(recovery_shares_handle)?;
+                serde_json::to_string(&data).or(Err(error::INVALID_JSON.code_num))?
+            },
+            false => String::from("dummytestmodedata")
+        };
 
         debug!("trustee data: {:?}", data);
         let data = connection::generate_encrypted_payload(&self.issued_vk, &self.remote_vk, &data, "TRUSTEE_DATA")?;
@@ -200,7 +212,7 @@ impl OfferTrustee {
         Ok(())
     }
 
-    fn _generate_trustee_data(&self, recovery_shares_handle: u32) -> Result<Value, u32> {
+    fn _generate_trustee_data(&self, recovery_shares_handle: u32) -> Result<TrusteeData, u32> {
         let address = settings::get_config_value(settings::CONFIG_IDENTITY_POLICY_ADDRESS)?;
         if address.is_empty() {
             warn!("Identity Address is blank");
@@ -228,7 +240,7 @@ impl OfferTrustee {
                 }),
             },
         };
-        Ok(serde_json::to_value(&rtn).or(Err(error::INVALID_JSON.code_num))?)
+        Ok(rtn)
     }
 }
 

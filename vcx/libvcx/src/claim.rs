@@ -163,9 +163,14 @@ impl Claim {
         let local_my_did = self.my_did.as_ref().ok_or(e_code)?;
         let local_my_vk = self.my_vk.as_ref().ok_or(e_code)?;
 
+        let req = match settings::test_indy_mode_enabled() {
+            true => {
+                let req: ClaimRequest = self._build_request(local_my_did, local_their_did)?;
+                serde_json::to_string(&req).or(Err(error::INVALID_JSON.code_num))?
+            },
+            false => String::from("dummytestmodedata")
+        };
 
-        let req: ClaimRequest = self._build_request(local_my_did, local_their_did)?;
-        let req = serde_json::to_string(&req).or(Err(10 as u32))?;
         let data: Vec<u8> = connection::generate_encrypted_payload(local_my_vk, local_their_vk, &req, "CLAIM_REQ")?;
         let offer_msg_id = self.claim_offer.as_ref().unwrap().msg_ref_id.as_ref().ok_or(e_code)?;
 

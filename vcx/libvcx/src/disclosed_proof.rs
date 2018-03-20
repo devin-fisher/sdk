@@ -301,8 +301,14 @@ impl DisclosedProof {
         let proof_req = self.proof_request.as_ref().ok_or(e_code)?;
         let ref_msg_uid = proof_req.msg_ref_id.as_ref().ok_or(e_code)?;
 
-        let proof: ProofMessage = self._build_proof()?;
-        let proof = serde_json::to_string(&proof).or(Err(10 as u32))?;
+        let proof = match settings::test_indy_mode_enabled() {
+            true => {
+                let proof: ProofMessage = self._build_proof()?;
+                serde_json::to_string(&proof).or(Err(error::INVALID_JSON.code_num))?
+            },
+            false => String::from("dummytestmodedata")
+        };
+
         let data: Vec<u8> = connection::generate_encrypted_payload(local_my_vk, local_their_vk, &proof, "PROOF")?;
 
         if settings::test_agency_mode_enabled() { httpclient::set_next_u8_response(SEND_MESSAGE_RESPONSE.to_vec()); }
