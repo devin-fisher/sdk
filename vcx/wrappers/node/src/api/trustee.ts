@@ -11,7 +11,7 @@ export interface ITrusteeData {
   source_id: string,
 }
 
-export type ITrusteeOffer = string
+export type ITrusteeOffer = object
 
 export interface ITrusteeCreateData {
   sourceId: string,
@@ -27,11 +27,12 @@ export class Trustee extends VCXBaseWithState {
 
   static async create ({ sourceId, offer }: ITrusteeCreateData): Promise<Trustee> {
     const trustee = new Trustee(sourceId)
+    const offerStr = JSON.stringify(offer)
     try {
       await trustee._create((cb) => rustAPI().vcx_trustee_create_with_offer(
         0,
         sourceId,
-        offer,
+        offerStr,
         cb
         )
       )
