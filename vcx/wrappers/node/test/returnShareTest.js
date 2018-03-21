@@ -96,7 +96,7 @@ describe('A ReturnShare', function () {
       offer: JSON.stringify(TRUSTEE_OFFER)
     }) // NOT FULLY SETUP TRUSTEE BUT TEST MODE WILL ALLOW THIS TO WORK
 
-    obj.sendShare(connection, trustee)
+    await obj.sendShare(connection, trustee)
     state = await obj.getState()
     assert(state === StateType.Accepted)
   })
