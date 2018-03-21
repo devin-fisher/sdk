@@ -113,7 +113,7 @@ pub fn parse_msg(wallet_handle: i32, recipient_vk: &str, msg: &[u8]) -> Result<V
         }
 
         let (verkey, msg) = rtn_obj.receive(TimeoutUtils::some_long())?;
-        check_str(verkey)?;
+//        check_str(verkey)?;
         Ok(msg)
 }
 

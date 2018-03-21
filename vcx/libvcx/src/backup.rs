@@ -5,7 +5,7 @@ extern crate rusoto_s3;
 extern crate chrono;
 
 use self::rusoto_core::Region;
-use self::rusoto_s3::{S3Client, PutObjectRequest};
+use self::rusoto_s3::{S3Client, PutObjectRequest, GetObjectRequest};
 use self::rusoto_core::default_tls_client;
 use self::rusoto_core::ProvideAwsCredentials;
 use self::rusoto_core::AwsCredentials;
@@ -17,7 +17,9 @@ use std::str::FromStr;
 
 use std::fs::File;
 use std::io::Read;
+use std::io::Write;
 use std::path::Path;
+
 
 use settings;
 
@@ -90,8 +92,8 @@ fn _prep_file(file_path: &str, verkey: &str) -> Result<Vec<u8>, u32> {
 
 fn _send_to_s3(data: Vec<u8>, entry: &ManifestEntry) -> Result<(), u32> {
     let client = S3Client::new(default_tls_client().or(Err(103 as u32))?,
-                               CustomeCredentialsProvider::new(),
-                               Region::UsWest2);
+                                   CustomeCredentialsProvider::new(),
+                                   Region::UsWest2);
 
     let mut put_request = PutObjectRequest::default();
     put_request.key = entry.s3_key.to_owned();
@@ -173,42 +175,108 @@ pub fn do_restore(request_shares_handles: &str) -> Result<u32, u32> {
 
     let shares =  serde_json::to_string_pretty(&shares).unwrap();
     println!("shares:{}",shares);
-    let verkey = _recover_key(&shares)?;
 
-    _restore_files(&verkey)?;
+    let w_h = libindy::wallet::get_wallet_handle();
+    let verkey = _recover_key(&shares, w_h)?;
+
+    _restore_files(&verkey, w_h)?;
     Ok(error::SUCCESS.code_num)
 }
 
-pub fn _restore_files(verkey: &str) -> Result<(), u32> {
+fn _decrypt_bytes(verkey: &str, wallet_handle: i32, data: &Vec<u8>) -> Result<Vec<u8>, u32> {
+    libindy::crypto::parse_msg(wallet_handle, verkey, &data[..])
+}
+
+fn _retrieve_file(entry: &ManifestEntry) -> Result<Vec<u8>, u32> {
+    let client = S3Client::new(default_tls_client().or(Err(103 as u32))?,
+                               CustomeCredentialsProvider::new(),
+                               Region::UsWest2);
+
+    let mut put_request = GetObjectRequest::default();
+
+    put_request.key = entry.s3_key.to_owned();
+    put_request.bucket = entry.s3_bucket.to_owned();
+
+    let result = client.get_object(&put_request).unwrap();
+    let mut rtn = Vec::default();
+    let mut out = result.body.unwrap();
+    out.read_to_end(&mut rtn).unwrap();
+    Ok(rtn)
+}
+
+fn _retrieve_manifest(verkey: &str, wallet_handle: i32) -> Result<BackupManifest, u32> {
+    let manifest_entry = ManifestEntry{
+        file_path: String::new(),
+        s3_key: String::from(verkey),
+        s3_bucket: String::from(S3_BUCKET),
+    };
+
+    let data = _retrieve_file(&manifest_entry)?;
+    let data = _decrypt_bytes(verkey, wallet_handle,&data)?;
+
+    let manifest: BackupManifest = serde_json::from_slice(&data[..])
+        .or(Err(10000 as u32))?;
+    Ok(manifest)
+}
+
+fn _restore_file(verkey: &str, wallet_handle: i32, entry: &ManifestEntry) -> Result<(), u32> {
+    let data = _retrieve_file(entry)?;
+    let data = _decrypt_bytes(verkey, wallet_handle, &data)?;
+
+    if entry.file_path.contains("DKMS_for_Alice") {
+        match entry.file_path.contains("sqlite.db") {
+            true => println!("{} \n{}", entry.file_path, "WALLET DATA"),
+            false => println!("{} \n{}", entry.file_path, String::from_utf8_lossy(&data[..]))
+        };
+    }
+    else {
+        let p = Path::new(&entry.file_path);
+        let mut f = File::create(&p).or(Err(10004 as u32))?;
+
+        f.write_all(&data[..]).or(Err(10005 as u32))?;
+    }
+
     Ok(())
 }
 
-pub fn _recover_key(shares_json: &str) -> Result<String, u32> {
+fn _restore_files(verkey: &str, wallet_handle: i32) -> Result<(), u32> {
+    let manifest = _retrieve_manifest(verkey, wallet_handle)?;
+
+    println!("{}", serde_json::to_string_pretty(&manifest)
+        .unwrap());
+
+    for entry in manifest.entries {
+        _restore_file(verkey, wallet_handle, &entry)?;
+    }
+
+    Ok(())
+}
+
+fn _recover_key(shares_json: &str, wallet_handle: i32) -> Result<String, u32> {
     let secret_json: Value = _sss_recovery(shares_json)?;
 
     let seed = secret_json["seed"].as_str().ok_or(error::INVALID_JSON.code_num)?;
     let verkey = secret_json["verkey"].as_str().ok_or(error::INVALID_JSON.code_num)?;
 
-    let w_h = libindy::wallet::get_wallet_handle();
     let key_json = json!({"seed": seed});
     let key_json = serde_json::to_string(&key_json).or(Err(error::INVALID_JSON.code_num))?;
-    let new_verkey = libindy::crypto::libindy_create_key(w_h, &key_json)?;
+    let new_verkey = libindy::crypto::libindy_create_key(wallet_handle, &key_json)?;
 
     if new_verkey.eq(verkey) {
         Ok(new_verkey)
     } else {
         Err(10000)
     }
-
 }
 
-pub fn _sss_recovery(shares_json: &str) -> Result<Value, u32> {
+fn _sss_recovery(shares_json: &str) -> Result<Value, u32> {
     let secret = libindy::sss::libindy_recover_secret_from_shards(&shares_json)?;
 
     println!("secret: {}", secret);
 
     serde_json::from_str(&secret).or(Err(error::INVALID_JSON.code_num))
 }
+
 
 #[cfg(test)]
 mod tests {

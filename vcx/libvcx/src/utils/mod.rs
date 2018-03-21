@@ -15,6 +15,7 @@ pub mod json;
 pub mod libindy;
 pub mod version_constants;
 pub mod option_util;
+pub mod log_result;
 
 use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
 lazy_static! {

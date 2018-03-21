@@ -119,7 +119,7 @@ pub fn libindy_create_and_store_new_policy(wallet_handle: i32)  -> Result<String
         ).map_err(map_indy_error_code)?;
     }
 
-    rtn_obj.receive(TimeoutUtils::some_short()).and_then(check_str)
+    rtn_obj.receive(TimeoutUtils::some_long()).and_then(check_str)
 }
 
 
@@ -143,7 +143,7 @@ pub fn libindy_add_new_agent_to_policy(wallet_handle: i32,
         ).map_err(map_indy_error_code)?;
     }
 
-    rtn_obj.receive(TimeoutUtils::some_short()).and_then(check_str)
+    rtn_obj.receive(TimeoutUtils::some_long()).and_then(check_str)
 }
 
 
@@ -168,7 +168,7 @@ pub fn libindy_update_agent_witness(wallet_handle: i32,
         ).map_err(map_indy_error_code)?;
     }
 
-    rtn_obj.receive(TimeoutUtils::some_short()).and_then(check_str)
+    rtn_obj.receive(TimeoutUtils::some_long()).and_then(check_str)
 }
 
 pub fn libindy_get_policy(wallet_handle: i32,
@@ -186,5 +186,5 @@ pub fn libindy_get_policy(wallet_handle: i32,
         ).map_err(map_indy_error_code)?;
     }
 
-    rtn_obj.receive(TimeoutUtils::some_short()).and_then(check_str)
+    rtn_obj.receive(TimeoutUtils::some_long()).and_then(check_str)
 }
