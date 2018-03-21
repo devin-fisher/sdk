@@ -21,7 +21,7 @@ describe('A Trustee', function () {
   it('can be created.', async () => {
     const obj = await Trustee.create({
       sourceId: 'Test',
-      offer: JSON.stringify(OFFER)
+      offer: OFFER
     })
     assert(obj)
     assert(obj instanceof Trustee)
@@ -30,7 +30,7 @@ describe('A Trustee', function () {
   it('can be serialized.', async () => {
     const obj = await Trustee.create({
       sourceId: 'Test',
-      offer: JSON.stringify(OFFER)
+      offer: OFFER
     })
     assert(obj)
     const val = await obj.serialize()
@@ -40,7 +40,7 @@ describe('A Trustee', function () {
   it('can be deserialized.', async () => {
     const obj = await Trustee.create({
       sourceId: 'Test',
-      offer: JSON.stringify(OFFER)
+      offer: OFFER
     })
     assert(obj)
     const val = await obj.serialize()
@@ -53,7 +53,7 @@ describe('A Trustee', function () {
   it('can get state.', async () => {
     const obj = await Trustee.create({
       sourceId: 'Test',
-      offer: JSON.stringify(OFFER)
+      offer: OFFER
     })
     assert(obj)
     const state = await obj.getState()
