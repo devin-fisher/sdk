@@ -153,14 +153,27 @@ fn backup_identity_files(file_list: Vec<String>, verkey: &str) -> Result<(), u32
 pub fn do_backup(file_list_json: &str) -> Result<u32, u32> {
     let backup_verkey = settings::get_config_value(settings::CONFIG_RECOVERY_VERKEY)?;
 
-    let file_list: Vec<String> = serde_json::from_str(file_list_json).or(Err(error::INVALID_JSON.code_num))?;
+    let file_list: Vec<String> = serde_json::from_str(file_list_json)
+        .map_err(|e| {
+            error!("JSON with file list is not a list of Strings or is not valid JSON -- {}", file_list_json);
+            e
+        }).or(Err(error::INVALID_JSON.code_num))?;
 
     if file_list.len() == 0 {
         warn!("Files list to backup is empty");
         return Ok(error::SUCCESS.code_num);
     }
 
-    backup_identity_files(file_list, &backup_verkey)?;
+    match settings::test_indy_mode_enabled() {
+        false => {
+            backup_identity_files(file_list, &backup_verkey)?;
+        },
+        true => {
+            info!("Backup not sent to S3 in test mode");
+            info!("files to backup are: {}", file_list_json);
+        }
+    };
+
     Ok(error::SUCCESS.code_num)
 }
 

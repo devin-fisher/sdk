@@ -13,7 +13,6 @@ use messages::send_message::parse_msg_uid;
 use messages::trustee::data::{RecoveryShare};
 use return_share::ReturnShareMsg;
 use utils::error;
-use proof::generate_nonce;
 
 use settings;
 use utils::httpclient;
@@ -39,7 +38,6 @@ struct ReturnShare {
     prover_did: String,
     prover_vk: String,
     state: VcxStateType,
-    nonce: String,
     remote_did: String,
     remote_vk: String,
     agent_did: String,
@@ -139,7 +137,6 @@ pub fn create_request_share(source_id: Option<String>) -> Result<u32, u32> {
         prover_did: String::new(),
         prover_vk: String::new(),
         state: VcxStateType::VcxStateNone,
-        nonce: generate_nonce()?,
         remote_did: String::new(),
         remote_vk: String::new(),
         agent_did: String::new(),

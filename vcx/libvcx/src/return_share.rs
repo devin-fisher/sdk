@@ -105,7 +105,10 @@ impl ReturnShare {
 
         let share = match settings::test_indy_mode_enabled() {
             false => {
-                let share = trustee::get_share(trustee_handle)?;
+                let share = trustee::get_share(trustee_handle).map_err(|e|{
+                    error!("Unable to get Share from Trustee -- handle: {}", trustee_handle);
+                    e
+                })?;
 
                 let share = ReturnShareMsg{
                     msg_type: String::from("RETURN_SHARE"),
