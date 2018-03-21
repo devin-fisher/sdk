@@ -570,6 +570,11 @@ fn chapter_4_demo(actor: &Actor, dir_path: &Path) {
                         None).unwrap();
 
 
+            let _offers = api_caller::u32_r_u32_str(bob_h,
+                                                   vcx::api::trustee::vcx_trustee_new_offers
+            ).unwrap(); //TESTING FOR A BUG
+
+
             println!("Alice backs up her wallet");
 
             api_caller::str_r_check(&prep_backup_file(actor, dir_path), vcx::api::backup::vcx_backup_do_backup).unwrap();

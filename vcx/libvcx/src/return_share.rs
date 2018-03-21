@@ -247,6 +247,10 @@ pub fn new_messages(connection_handle: u32, match_name: Option<&str>) -> Result<
     let mut messages: Vec<RequestShareMsg> = Default::default();
 
     for msg in payload {
+        if msg.sender_did.eq(&my_did){ //Do not want message sent by me
+            continue;
+        }
+
         if msg.msg_type.eq("requestShare") {
             let msg_data = match msg.payload {
                 Some(ref data) => {

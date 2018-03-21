@@ -438,6 +438,10 @@ pub fn new_proof_requests_messages(connection_handle: u32, match_name: Option<&s
     let mut messages: Vec<ProofRequestMessage> = Default::default();
 
     for msg in payload {
+        if msg.sender_did.eq(&my_did){ //Do not want message sent by me
+            continue;
+        }
+
         if msg.msg_type.eq("proofReq") {
             let msg_data = match msg.payload {
                 Some(ref data) => {

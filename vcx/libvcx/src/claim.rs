@@ -334,6 +334,10 @@ pub fn new_claims_offer_messages(connection_handle: u32, match_name: Option<&str
     let mut messages: Vec<ClaimOffer> = Default::default();
 
     for msg in payload {
+        if msg.sender_did.eq(&my_did){ //Do not want message sent by me
+            continue;
+        }
+
         if msg.msg_type.eq("claimOffer") {
             let msg_data = match msg.payload {
                 Some(ref data) => {
