@@ -103,16 +103,21 @@ impl ReturnShare {
         let ref_msg_uid = expect_ok_or(self.request.as_ref(), "", 10 as u32)?;
         let ref_msg_uid = expect_ok_or(ref_msg_uid.msg_uid.as_ref(), "", 10 as u32)?;
 
-        let share = trustee::get_share(trustee_handle)?;
+        let share = match settings::test_indy_mode_enabled() {
+            false => {
+                let share = trustee::get_share(trustee_handle)?;
 
-        let share = ReturnShareMsg{
-            msg_type: String::from("RETURN_SHARE"),
-            version: String::from("0.1"),
-            share,
+                let share = ReturnShareMsg{
+                    msg_type: String::from("RETURN_SHARE"),
+                    version: String::from("0.1"),
+                    share,
+                };
+
+                serde_json::to_string(&share).or(Err(e_code))?
+            },
+            true => String::from("dummytestmodedata")
         };
 
-
-        let share = serde_json::to_string(&share).or(Err(e_code))?;
         let data: Vec<u8> = connection::generate_encrypted_payload(local_my_vk, local_their_vk, &share, "RETURN_SHARE")?;
         if settings::test_agency_mode_enabled() { httpclient::set_next_u8_response(SEND_MESSAGE_RESPONSE.to_vec());}
 
@@ -172,7 +177,7 @@ pub fn create_return_share(source_id: Option<String>, request: &str) -> Result<u
 
     new_obj.request = Some(request);
 
-    new_obj.set_state(VcxStateType::VcxStateInitialized);
+    new_obj.set_state(VcxStateType::VcxStateRequestReceived);
 
     Ok(HANDLE_MAP.add(new_obj)?)
 }

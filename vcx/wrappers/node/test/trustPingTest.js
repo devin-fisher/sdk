@@ -1,7 +1,7 @@
 const assert = require('chai').assert
 const vcx = require('../dist/index')
 const { stubInitVCX } = require('./helpers')
-const { TrustPing, Connection, StateType, VCXMock } = vcx
+const { TrustPing, StateType } = vcx
 
 describe('TrustPing', function () {
   this.timeout(30000)
@@ -40,5 +40,4 @@ describe('TrustPing', function () {
     const state = await obj.getState()
     assert(state === StateType.Initialized)
   })
-
 })

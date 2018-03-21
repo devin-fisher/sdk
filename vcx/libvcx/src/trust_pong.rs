@@ -170,7 +170,7 @@ pub fn create_pong(source_id: Option<String>, ping: &str) -> Result<u32, u32> {
 
     new_obj.ping = Some(ping);
 
-    new_obj.set_state(VcxStateType::VcxStateInitialized);
+    new_obj.set_state(VcxStateType::VcxStateRequestReceived);
 
     Ok(HANDLE_MAP.add(new_obj)?)
 }

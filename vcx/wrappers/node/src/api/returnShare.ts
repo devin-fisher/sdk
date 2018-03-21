@@ -5,6 +5,7 @@ import { rustAPI } from '../rustlib'
 import { createFFICallbackPromise } from '../utils/ffi-helpers'
 import { StateType } from './common'
 import { Connection } from './connection'
+import { Trustee } from './trustee'
 import { VCXBaseWithState } from './VCXBaseWithState'
 
 export interface IReturnShareData {
@@ -94,11 +95,11 @@ export class ReturnShare extends VCXBaseWithState {
     }
   }
 
-  async sendShare (connection: Connection): Promise<void> {
+  async sendShare (connection: Connection, trustee: Trustee): Promise<void> {
     try {
       await createFFICallbackPromise<void>(
           (resolve, reject, cb) => {
-            const rc = rustAPI().vcx_return_share_send_share(0, this.handle, connection.handle, cb)
+            const rc = rustAPI().vcx_return_share_send_share(0, this.handle, connection.handle, trustee.handle, cb)
             if (rc) {
               reject(rc)
             }

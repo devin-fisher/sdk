@@ -162,7 +162,8 @@ export interface IFFIEntryPoint {
   // return share
   vcx_return_share_create_with_request: (commandId: number, sourceId: string, req: string, cb: any) => number,
   vcx_return_share_release: (handle: string) => number,
-  vcx_return_share_send_share: (commandId: number, proofHandle: string, connectionHandle: string, cb: any) => number,
+  vcx_return_share_send_share: (commandId: number, proofHandle: string, connectionHandle: string,
+                                trusteeHandle: string, cb: any) => number,
   vcx_return_share_serialize: (commandId: number, handle: string, cb: any) => number,
   vcx_return_share_deserialize: (commandId: number, data: string, cb: any) => number,
   vcx_return_share_update_state: (commandId: number, handle: string, cb: any) => number,
@@ -328,7 +329,7 @@ export const FFIConfiguration: { [ Key in keyof IFFIEntryPoint ]: any } = {
     FFI_CALLBACK_PTR]],
   vcx_return_share_release: [FFI_ERROR_CODE, [FFI_HANDLE]],
   vcx_return_share_send_share: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_HANDLE, FFI_CONNECTION_HANDLE,
-    FFI_CALLBACK_PTR]],
+    FFI_HANDLE, FFI_CALLBACK_PTR]],
   vcx_return_share_serialize: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_HANDLE, FFI_CALLBACK_PTR]],
   vcx_return_share_deserialize: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_STRING_DATA, FFI_CALLBACK_PTR]],
   vcx_return_share_update_state: [FFI_ERROR_CODE, [FFI_COMMAND_HANDLE, FFI_HANDLE, FFI_CALLBACK_PTR]],

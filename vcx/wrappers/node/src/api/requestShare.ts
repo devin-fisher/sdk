@@ -18,7 +18,6 @@ export interface IRequestShareData {
 }
 
 /**
- * @class Class representing a Connection
  */
 export class RequestShare extends VCXBaseWithState {
   protected _releaseFn = rustAPI().vcx_request_share_release
