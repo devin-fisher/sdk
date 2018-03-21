@@ -164,11 +164,11 @@ impl Claim {
         let local_my_vk = self.my_vk.as_ref().ok_or(e_code)?;
 
         let req = match settings::test_indy_mode_enabled() {
-            true => {
+            false => {
                 let req: ClaimRequest = self._build_request(local_my_did, local_their_did)?;
                 serde_json::to_string(&req).or(Err(error::INVALID_JSON.code_num))?
             },
-            false => String::from("dummytestmodedata")
+            true => String::from("dummytestmodedata")
         };
 
         let data: Vec<u8> = connection::generate_encrypted_payload(local_my_vk, local_their_vk, &req, "CLAIM_REQ")?;

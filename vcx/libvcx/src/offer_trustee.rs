@@ -70,21 +70,21 @@ impl OfferTrustee {
         self.remote_vk = connection::get_their_pw_verkey(connection_handle)?;
 
         let payload = match settings::test_indy_mode_enabled() {
-            true => {
+            false => {
                 let offer = self._generate_trustee_offer()?;
                 match serde_json::to_string(&offer) {
                     Ok(p) => p,
                     Err(_) => return Err(error::INVALID_JSON.code_num)
                 }
             },
-            false => String::from("dummytestmodedata")
+            true => String::from("dummytestmodedata")
         };
 
         debug!("trustee offer data: {}", payload);
 
         let data = connection::generate_encrypted_payload(&self.issued_vk, &self.remote_vk, &payload, "TRUSTEE_OFFER")?;
 
-        if settings::test_agency_mode_enabled() { httpclient::set_next_u8_response(SEND_MESSAGE_RESPONSE.to_vec()); }
+        if settings::test_agency_mode_enabled() { httpclient::set_next_u8_response(SEND_MESSAGE_RESPONSE.to_vec());}
 
         match messages::send_message().to(&self.issued_did)
             .to_vk(&self.issued_vk)
@@ -125,12 +125,12 @@ impl OfferTrustee {
 
 
         let data = match settings::test_indy_mode_enabled() {
-            true => {
+            false => {
                 self._add_key_to_policy()?;
                 let data = self._generate_trustee_data(recovery_shares_handle)?;
                 serde_json::to_string(&data).or(Err(error::INVALID_JSON.code_num))?
             },
-            false => String::from("dummytestmodedata")
+            true => String::from("dummytestmodedata")
         };
 
         debug!("trustee data: {:?}", data);

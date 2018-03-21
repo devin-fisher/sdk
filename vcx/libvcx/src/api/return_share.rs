@@ -73,7 +73,7 @@ pub extern fn vcx_return_share_send_share(command_handle: u32,
 /////
 //
 #[no_mangle]
-pub extern fn vcx_return_share_new_pings(command_handle: u32,
+pub extern fn vcx_return_share_new_request(command_handle: u32,
                                    connection_handle: u32,
                                    cb: Option<extern fn(xcommand_handle: u32, err: u32, requests: *const c_char)>) -> u32 {
 
@@ -84,13 +84,13 @@ pub extern fn vcx_return_share_new_pings(command_handle: u32,
     }
 
     thread::spawn(move|| {
-        match return_share::new_ping_messages(connection_handle, None) {
+        match return_share::new_messages(connection_handle, None) {
             Ok(x) => {
                 let msg = CStringUtils::string_to_cstring(x);
                 cb(command_handle, error::SUCCESS.code_num, msg.as_ptr());
             },
             Err(x) => {
-                warn!("could not retrieve trust pings");
+                warn!("could not retrieve messages");
                 cb(command_handle, x, ptr::null_mut());
             },
         };

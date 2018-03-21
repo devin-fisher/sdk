@@ -15,6 +15,10 @@ use return_share::ReturnShareMsg;
 use utils::error;
 use proof::generate_nonce;
 
+use settings;
+use utils::httpclient;
+use utils::constants::SEND_MESSAGE_RESPONSE;
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RequestShareMsg {
     pub msg_type: String,
@@ -71,6 +75,7 @@ impl ReturnShare {
         let request = serde_json::to_string(&request).unwrap();
 
         let data = connection::generate_encrypted_payload(&self.prover_vk, &self.remote_vk, &request, "REQUEST_SHARE")?;
+        if settings::test_agency_mode_enabled() { httpclient::set_next_u8_response(SEND_MESSAGE_RESPONSE.to_vec());}
 
         match messages::send_message().to(&self.prover_did)
             .to_vk(&self.prover_vk)

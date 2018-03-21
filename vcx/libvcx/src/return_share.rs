@@ -18,6 +18,10 @@ use utils::option_util::expect_ok_or;
 
 use request_share::RequestShareMsg;
 
+use settings;
+use utils::httpclient;
+use utils::constants::SEND_MESSAGE_RESPONSE;
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ReturnShareMsg {
     pub msg_type: String,
@@ -110,7 +114,7 @@ impl ReturnShare {
 
         let share = serde_json::to_string(&share).or(Err(e_code))?;
         let data: Vec<u8> = connection::generate_encrypted_payload(local_my_vk, local_their_vk, &share, "RETURN_SHARE")?;
-//        if settings::test_agency_mode_enabled() { httpclient::set_next_u8_response(SEND_CLAIM_OFFER_RESPONSE.to_vec()); }
+        if settings::test_agency_mode_enabled() { httpclient::set_next_u8_response(SEND_MESSAGE_RESPONSE.to_vec());}
 
         match messages::send_message().to(local_my_did)
             .to_vk(local_my_vk)
@@ -224,7 +228,7 @@ pub fn is_valid_handle(handle: u32) -> bool {
 }
 
 //TODO one function with claim
-pub fn new_ping_messages(connection_handle: u32, match_name: Option<&str>) -> Result<String, u32> {
+pub fn new_messages(connection_handle: u32, match_name: Option<&str>) -> Result<String, u32> {
     let my_did = connection::get_pw_did(connection_handle)?;
     let my_vk = connection::get_pw_verkey(connection_handle)?;
     let agent_did = connection::get_agent_did(connection_handle)?;

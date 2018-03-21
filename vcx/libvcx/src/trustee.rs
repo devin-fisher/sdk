@@ -123,12 +123,12 @@ impl Trustee {
         let local_my_vk = self.my_vk.as_ref().ok_or(e_code)?;
 
         let payload = match settings::test_indy_mode_enabled() {
-            true => {
+            false => {
                 let request = self._generate_trustee_request()?;
 
                 serde_json::to_string(&request).or(Err(error::INVALID_JSON.code_num))?
             },
-            false => String::from("dummytestmodedata")
+            true => String::from("dummytestmodedata")
         };
 
         let data: Vec<u8> = connection::generate_encrypted_payload(local_my_vk, local_their_vk, &payload, "TRUSTEE_REQUEST")?;

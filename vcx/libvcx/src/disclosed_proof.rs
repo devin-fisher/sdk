@@ -302,11 +302,11 @@ impl DisclosedProof {
         let ref_msg_uid = proof_req.msg_ref_id.as_ref().ok_or(e_code)?;
 
         let proof = match settings::test_indy_mode_enabled() {
-            true => {
+            false => {
                 let proof: ProofMessage = self._build_proof()?;
                 serde_json::to_string(&proof).or(Err(error::INVALID_JSON.code_num))?
             },
-            false => String::from("dummytestmodedata")
+            true => String::from("dummytestmodedata")
         };
 
         let data: Vec<u8> = connection::generate_encrypted_payload(local_my_vk, local_their_vk, &proof, "PROOF")?;
