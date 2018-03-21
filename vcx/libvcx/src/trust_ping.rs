@@ -13,6 +13,10 @@ use messages::send_message::parse_msg_uid;
 use utils::error;
 use proof::generate_nonce;
 
+use settings;
+use utils::httpclient;
+use utils::constants::SEND_MESSAGE_RESPONSE;
+
 use serde_json::Value;
 
 lazy_static! {
@@ -61,6 +65,8 @@ impl Ping {
 
         let data = connection::generate_encrypted_payload(&self.prover_vk, &self.remote_vk, &request, "TRUST_PING")?;
 
+        if settings::test_agency_mode_enabled() { httpclient::set_next_u8_response(SEND_MESSAGE_RESPONSE.to_vec());}
+
         match messages::send_message().to(&self.prover_did)
             .to_vk(&self.prover_vk)
             .msg_type("trustPing")
@@ -70,7 +76,7 @@ impl Ping {
             .send_secure() {
             Ok(response) => {
                 self.msg_uid = parse_msg_uid(&response[0])?;
-                self.state = VcxStateType::VcxStateOfferSent;
+                self.state = VcxStateType::VcxStateSent;
                 return Ok(error::SUCCESS.code_num)
             },
             Err(x) => {
@@ -85,7 +91,7 @@ impl Ping {
         if self.state == VcxStateType::VcxStateAccepted {
             return Ok(error::SUCCESS.code_num);
         }
-        else if self.state != VcxStateType::VcxStateOfferSent || self.msg_uid.is_empty() || self.prover_did.is_empty() {
+        else if self.state != VcxStateType::VcxStateSent || self.msg_uid.is_empty() || self.prover_did.is_empty() {
             return Ok(error::SUCCESS.code_num);
         }
 
@@ -207,6 +213,7 @@ pub fn send_ping_request(handle: u32, connection_handle: u32) -> Result<u32,u32>
 fn parse_trust_payload(payload: &Vec<u8>) -> Result<Value, u32> {
     debug!("parsing pong payload: {:?}", payload);
     let data = messages::extract_json_payload(payload)?;
+    debug!("extracted payload: {}", data);
 
     match serde_json::from_str(&data) {
         Ok(x) => Ok(x),

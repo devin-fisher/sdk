@@ -16,7 +16,9 @@ use utils::option_util::expect_ok_or;
 
 use serde_json::Value;
 
-
+use settings;
+use utils::httpclient;
+use utils::constants::SEND_MESSAGE_RESPONSE;
 
 lazy_static! {
     static ref HANDLE_MAP: ObjectCache<Pong>  = Default::default();
@@ -110,7 +112,7 @@ impl Pong {
         let pong = json!({"nonce": nonce, "msg_type": "TRUST_PONG"});
         let pong = serde_json::to_string(&pong).or(Err(e_code))?;
         let data: Vec<u8> = connection::generate_encrypted_payload(local_my_vk, local_their_vk, &pong, "TRUST_PONG")?;
-//        if settings::test_agency_mode_enabled() { httpclient::set_next_u8_response(SEND_CLAIM_OFFER_RESPONSE.to_vec()); }
+        if settings::test_agency_mode_enabled() { httpclient::set_next_u8_response(SEND_MESSAGE_RESPONSE.to_vec());}
 
         match messages::send_message().to(local_my_did)
             .to_vk(local_my_vk)
@@ -133,7 +135,7 @@ impl Pong {
 
     fn update_state(&mut self) {
         match self.state {
-            VcxStateType::VcxStateOfferSent => {
+            VcxStateType::VcxStateSent => {
                 //Check for messages
             },
             VcxStateType::VcxStateAccepted => {
@@ -168,7 +170,7 @@ pub fn create_pong(source_id: Option<String>, ping: &str) -> Result<u32, u32> {
 
     new_obj.ping = Some(ping);
 
-    new_obj.set_state(VcxStateType::VcxStateInitialized);
+    new_obj.set_state(VcxStateType::VcxStateRequestReceived);
 
     Ok(HANDLE_MAP.add(new_obj)?)
 }
@@ -238,6 +240,10 @@ pub fn new_ping_messages(connection_handle: u32, match_name: Option<&str>) -> Re
     let mut messages: Vec<Value> = Default::default();
 
     for msg in payload {
+        if msg.sender_did.eq(&my_did){ //Do not want message sent by me
+            continue;
+        }
+
         if msg.msg_type.eq("trustPing") {
             let msg_data = match msg.payload {
                 Some(ref data) => {

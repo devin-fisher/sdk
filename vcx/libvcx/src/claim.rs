@@ -163,9 +163,14 @@ impl Claim {
         let local_my_did = self.my_did.as_ref().ok_or(e_code)?;
         let local_my_vk = self.my_vk.as_ref().ok_or(e_code)?;
 
+        let req = match settings::test_indy_mode_enabled() {
+            false => {
+                let req: ClaimRequest = self._build_request(local_my_did, local_their_did)?;
+                serde_json::to_string(&req).or(Err(error::INVALID_JSON.code_num))?
+            },
+            true => String::from("dummytestmodedata")
+        };
 
-        let req: ClaimRequest = self._build_request(local_my_did, local_their_did)?;
-        let req = serde_json::to_string(&req).or(Err(10 as u32))?;
         let data: Vec<u8> = connection::generate_encrypted_payload(local_my_vk, local_their_vk, &req, "CLAIM_REQ")?;
         let offer_msg_id = self.claim_offer.as_ref().unwrap().msg_ref_id.as_ref().ok_or(e_code)?;
 
@@ -181,7 +186,7 @@ impl Claim {
             .send_secure() {
             Ok(response) => {
                 self.msg_uid = Some(parse_msg_uid(&response[0])?);
-                self.state = VcxStateType::VcxStateOfferSent;
+                self.state = VcxStateType::VcxStateSent;
                 return Ok(error::SUCCESS.code_num)
             },
             Err(x) => {
@@ -234,7 +239,7 @@ impl Claim {
 
     fn update_state(&mut self) {
         match self.state {
-            VcxStateType::VcxStateOfferSent => {
+            VcxStateType::VcxStateSent => {
                 //Check for messages
                 let _ = self._check_msg();
             },
@@ -329,6 +334,10 @@ pub fn new_claims_offer_messages(connection_handle: u32, match_name: Option<&str
     let mut messages: Vec<ClaimOffer> = Default::default();
 
     for msg in payload {
+        if msg.sender_did.eq(&my_did){ //Do not want message sent by me
+            continue;
+        }
+
         if msg.msg_type.eq("claimOffer") {
             let msg_data = match msg.payload {
                 Some(ref data) => {

@@ -89,7 +89,7 @@ impl Connection {
                 return Err(error::POST_MSG_FAILURE.code_num)
             },
             Ok(response) => {
-                self.state = VcxStateType::VcxStateOfferSent;
+                self.state = VcxStateType::VcxStateSent;
                 self.invite_detail = match parse_invite_detail(&response[0]) {
                     Ok(x) => Some(x),
                     Err(x) => {
@@ -135,7 +135,7 @@ impl Connection {
     fn connect(&mut self, options: Option<String>) -> Result<u32,u32> {
         match self.state {
             VcxStateType::VcxStateInitialized
-                | VcxStateType::VcxStateOfferSent => self._connect_send_invite(options),
+                | VcxStateType::VcxStateSent => self._connect_send_invite(options),
             VcxStateType::VcxStateRequestReceived => self._connect_accept_invite(options),
             _ => {
                 warn!("connection {} in state {} not ready to connect",self.handle,self.state as u32);
@@ -505,7 +505,7 @@ pub fn update_state(handle: u32) -> Result<u32, u32> {
         Ok(response) => {
             debug!("update state response: {:?}", response);
             match get_state(handle) {
-                2 => { //VcxStateType::VcxStateOfferSent TODO IS THERE A WAY AROUND THIS?
+                2 => { //VcxStateType::VcxStateSent TODO IS THERE A WAY AROUND THIS?
                     for i in response {
                         if i.status_code == MessageAccepted.as_string() && i.msg_type == "connReqAnswer" {
                             let details = parse_acceptance_details(handle, &i)?;
@@ -782,7 +782,7 @@ mod tests {
             handle,
             pw_did: "8XFh8yBzrpJQmNyZzgoTqB".to_string(),
             pw_verkey: "EkVTa7SCJ5SntpYyX7CSb2pcBhiVGT9kWSagA8a9T69A".to_string(),
-            state: VcxStateType::VcxStateOfferSent,
+            state: VcxStateType::VcxStateSent,
             uuid: String::new(),
             endpoint: String::new(),
             invite_detail: Some(InviteDetail::new()),
@@ -873,7 +873,7 @@ mod tests {
             handle,
             pw_did: "8XFh8yBzrpJQmNyZzgoTqB".to_string(),
             pw_verkey: "EkVTa7SCJ5SntpYyX7CSb2pcBhiVGT9kWSagA8a9T69A".to_string(),
-            state: VcxStateType::VcxStateOfferSent,
+            state: VcxStateType::VcxStateSent,
             uuid: String::new(),
             endpoint: String::new(),
             invite_detail: None,

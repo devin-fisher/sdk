@@ -62,6 +62,12 @@ pub extern fn vcx_set_next_agency_response(message_index: u32) {
         12 => NEW_CLAIM_OFFER_RESPONSE.to_vec(),
         13 => CLAIM_RESPONSE.to_vec(),
         14 => NEW_PROOF_REQUEST_RESPONSE.to_vec(),
+        15 => TRUST_PING.to_vec(),
+        16 => UPDATE_TRUST_PING.to_vec(),
+        17 => TRUST_PONG.to_vec(),
+        18 => REQUEST_SHARE.to_vec(),
+        19 => UPDATE_REQUEST_SHARE.to_vec(),
+        20 => RETURN_SHARE.to_vec(),
         _ => Vec::new(),
     };
 

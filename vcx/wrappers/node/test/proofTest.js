@@ -71,13 +71,13 @@ describe('A Proof', function () {
     assert.equal(await proof2.getState(), StateType.Initialized)
   })
 
-  it('has state of OfferSent after sending proof request', async () => {
+  it('has state of Sent after sending proof request', async () => {
     let connection = await Connection.create({ id: '234' })
     await connection.connect()
     const sourceId = 'SerializeDeserialize'
     const proof = await Proof.create({ sourceId, attrs: ATTR, name: 'TestProof' })
     await proof.requestProof(connection)
-    assert.equal(await proof.getState(), StateType.OfferSent)
+    assert.equal(await proof.getState(), StateType.Sent)
   })
 
   it('requesting a proof throws invalid connection error with released connection', async () => {

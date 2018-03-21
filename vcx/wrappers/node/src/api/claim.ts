@@ -3,11 +3,82 @@ import { Callback } from 'ffi'
 import { VCXInternalError } from '../errors'
 import { rustAPI } from '../rustlib'
 import { createFFICallbackPromise } from '../utils/ffi-helpers'
+import { StateType } from './common'
 import { Connection } from './connection'
 import { VCXBaseWithState } from './VCXBaseWithState'
 
-export interface IClaimStructData {
-  source_id: string,
+/* export interface IClaimOfferVCXAttributes {
+  [ index: string ]: [ string ]
+} */
+
+/**
+ * @interface
+ * @description
+ * SourceId: String for SDK User's reference.
+ * issuerDid: DID associated with the claim def.
+ * attributes: key: [value] list of items offered in claim
+ */
+/* export interface IClaimOfferConfig {
+  sourceId: string,
+  claimName: string
+} */
+
+/* export interface IClaimOfferParams {
+  schemaNum: number,
+  claimName: string,
+  attr: IClaimOfferVCXAttributes
+} */
+
+/* interface IClaimOfferMessage {
+  msg_type: string,
+  version: string,
+  to_did: string,
+  from_did: string,
+  claim: {
+    [ index: string ]: [ string ]
+  },
+  schema_seq_no: number,
+  issuer_did: string,
+  claim_name: string,
+  claim_id: string,
+  msg_ref_id: any
+} */
+
+/* Example claim offer message
+{ source_id: 'SerializeDeserialize',
+  state: 3,
+  claim_name: null,
+  claim_request: null,
+  claim_offer:
+   { msg_type: 'CLAIM_OFFER',
+     version: '0.1',
+     to_did: 'LtMgSjtFcyPwenK9SHCyb8',
+     from_did: 'LtMgSjtFcyPwenK9SHCyb8',
+     claim: { account_num: [Array], name_on_account: [Array] },
+     schema_seq_no: 48,
+     issuer_did: 'Pd4fnFtRBcMKRVC2go5w3j',
+     claim_name: 'Account Certificate',
+     claim_id: '3675417066',
+     msg_ref_id: null },
+  link_secret_alias: 'main',
+  msg_uid: null,
+  agent_did: null,
+  agent_vk: null,
+  my_did: null,
+  my_vk: null,
+  their_did: null,
+  their_vk: null }
+*/
+
+export interface IClaimOfferData {
+  source_id: string
+}
+
+export type IClaimOffer = string
+
+export interface IClaimOfferConfig {
+  sourceId: string,
+  message: IClaimOffer
 }
 
 export class Claim extends VCXBaseWithState {
@@ -17,17 +88,60 @@ export class Claim extends VCXBaseWithState {
   protected _serializeFn = rustAPI().vcx_claim_serialize
   protected _deserializeFn = rustAPI().vcx_claim_deserialize
 
-  constructor (sourceId) {
-    super(sourceId)
+  /**
+   * Use the base class constructor that takes one parameter
+   * constructor (sourceId) {
+   *  super(sourceId)
+   * }
+   */
+
+  static async create ({ sourceId }: IClaimOfferConfig): Promise<Claim> {
+    const claim = new Claim(sourceId)
+    try {
+      // await claim._create((cb) => () => { 0 })
+      return claim
+    } catch (err) {
+      throw new VCXInternalError(`vcx_claim_create_dummy -> ${err}`)
+    }
   }
 
-  static async create (sourceId: string, offer: string): Promise<Claim> {
+  /**
+   * @memberof Claim
+   * @description Builds a generic Claim object
+   * @static
+   * @async
+   * @function create_with_message
+   * @param sourceId
+   * @param message
+   * @example <caption>Example of message</caption>
+   * {
+   *   "msg_type":"CLAIM_OFFER",
+   *   "version":"0.1",
+   *   "to_did":"LtMgSjtFcyPwenK9SHCyb8",
+   *   "from_did":"LtMgSjtFcyPwenK9SHCyb8",
+   *   "claim":{
+   *     "account_num":[
+   *       "8BEaoLf8TBmK4BUyX8WWnA"
+   *     ],
+   *     "name_on_account":[
+   *       "Alice"
+   *     ]
+   *   },
+   *   "schema_seq_no":48,
+   *   "issuer_did":"Pd4fnFtRBcMKRVC2go5w3j",
+   *   "claim_name":"Account Certificate",
+   *   "claim_id":"3675417066",
+   *   "msg_ref_id":null
+   * }
+   * @returns {Promise<Claim>} A Claim Object
+   */
+  static async create_with_message ({ sourceId, message }: IClaimOfferConfig): Promise<Claim> {
     const claim = new Claim(sourceId)
     try {
       await claim._create((cb) => rustAPI().vcx_claim_create_with_offer(
         0,
         sourceId,
-        offer,
+        message,
         cb
         )
       )
@@ -37,7 +151,7 @@ export class Claim extends VCXBaseWithState {
     }
   }
 
-  static async deserialize (claimData: IClaimStructData) {
+  static async deserialize (claimData: IClaimOfferData) {
     try {
       const claim = await super._deserialize<Claim, {}>(Claim, claimData)
       return claim
@@ -46,8 +160,18 @@ export class Claim extends VCXBaseWithState {
     }
   }
 
-  static async new_offers (connection: Connection): Promise<string> {
-    return await createFFICallbackPromise<string>(
+  /**
+   * @memberof Claim
+   * @description Get new received Claim Offers from a given connection
+   * Claim Offer is made up of the data provided in the creation of this object
+   * @async
+   * @function newOffers
+   * @param {Connection} connection
+   * Connection is the object that was created to set up the pairwise relationship.
+   * @returns {Promise<void>}
+   */
+  static async new_offers (connection: Connection): Promise<IClaimOffer[]> {
+    const offersStr = await createFFICallbackPromise<string>(
       (resolve, reject, cb) => {
         const rc = rustAPI().vcx_claim_new_offers(0, connection.handle, cb)
         if (rc) {
@@ -62,9 +186,11 @@ export class Claim extends VCXBaseWithState {
         }
       })
     )
+    const offers = JSON.parse(offersStr)
+    return offers
   }
 
-  async getState (): Promise<number> {
+  async getState (): Promise<StateType> {
     try {
       return await this._getState()
     } catch (error) {
@@ -80,7 +206,7 @@ export class Claim extends VCXBaseWithState {
     }
   }
 
-  async serialize (): Promise<IClaimStructData> {
+  async serialize (): Promise<IClaimOfferData> {
     try {
       return JSON.parse(await super._serialize())
     } catch (err) {
@@ -109,5 +235,9 @@ export class Claim extends VCXBaseWithState {
       // TODO handle error
       throw new VCXInternalError(`vcx_claim_send_request -> ${err}`)
     }
+  }
+
+  get claimName () {
+    return 'Account Certificate'
   }
 }

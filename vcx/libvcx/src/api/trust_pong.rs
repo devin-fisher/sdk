@@ -37,7 +37,7 @@ pub extern fn vcx_trust_pong_create_with_request(command_handle: u32,
 
 ///
 #[no_mangle]
-pub extern fn vcx_trust_pong_send_proof(command_handle: u32,
+pub extern fn vcx_trust_pong_send(command_handle: u32,
                                           handle: u32,
                                           connection_handle: u32,
                                           cb: Option<extern fn(xcommand_handle: u32, err: u32)>) -> u32 {

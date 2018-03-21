@@ -252,7 +252,7 @@ fn chapter_1_demo(actor: &Actor) {
 
             api_caller::u32_u32_r_u32(pong_h,
                                       cunion_h,
-                                      vcx::api::trust_pong::vcx_trust_pong_send_proof).unwrap();
+                                      vcx::api::trust_pong::vcx_trust_pong_send).unwrap();
 
             await_state(pong_h,
                         4, //VcxStateAccepted
@@ -573,6 +573,11 @@ fn chapter_4_demo(actor: &Actor, dir_path: &Path) {
                         None).unwrap();
 
 
+            let _offers = api_caller::u32_r_u32_str(bob_h,
+                                                   vcx::api::trustee::vcx_trustee_new_offers
+            ).unwrap(); //TESTING FOR A BUG
+
+
             println!("Alice backs up her wallet");
 
             api_caller::str_r_check(&prep_backup_file(actor, dir_path), vcx::api::backup::vcx_backup_do_backup).unwrap();
@@ -754,7 +759,7 @@ fn chapter_5_demo(actor: &Actor, _dir_path: &Path) {
             println!("Look for return share requests");
             let req = await_message(recovery_alice_h,
                                     "REQUEST_SHARE",
-                                    vcx::api::return_share::vcx_return_share_new_pings,
+                                    vcx::api::return_share::vcx_return_share_new_request,
                                     None).unwrap();
 
             println!("Requests:\n{}", req);
@@ -793,7 +798,7 @@ fn chapter_5_demo(actor: &Actor, _dir_path: &Path) {
             println!("Look for return share requests");
             let req = await_message(recovery_alice_h,
                                     "REQUEST_SHARE",
-                                    vcx::api::return_share::vcx_return_share_new_pings,
+                                    vcx::api::return_share::vcx_return_share_new_request,
                                     None).unwrap();
 
             println!("Requests:\n{}", req);

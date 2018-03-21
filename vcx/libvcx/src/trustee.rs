@@ -124,16 +124,17 @@ impl Trustee {
         let local_my_did = self.my_did.as_ref().ok_or(e_code)?;
         let local_my_vk = self.my_vk.as_ref().ok_or(e_code)?;
 
+        let payload = match settings::test_indy_mode_enabled() {
+            false => {
+                let request = self._generate_trustee_request()?;
 
-        let request = self._generate_trustee_request()?; //
-
-        let payload = match serde_json::to_string(&request) {
-            Ok(p) => p,
-            Err(_) => return Err(error::INVALID_JSON.code_num)
+                serde_json::to_string(&request).or(Err(error::INVALID_JSON.code_num))?
+            },
+            true => String::from("dummytestmodedata")
         };
 
         let data: Vec<u8> = connection::generate_encrypted_payload(local_my_vk, local_their_vk, &payload, "TRUSTEE_REQUEST")?;
-//        let offer_msg_id = _value_from_json(self.trustee_offer.as_ref(), "msg_uid", "", e_code)?;
+
         let offer_msg_id = expect_ok_or(self.trustee_offer.as_ref(),
                                         "Expect to have a offer to send request",
                                         10 as u32)?;
@@ -153,7 +154,7 @@ impl Trustee {
             .send_secure() {
             Ok(response) => {
                 self.msg_uid = Some(parse_msg_uid(&response[0])?);
-                self.state = VcxStateType::VcxStateOfferSent;
+                self.state = VcxStateType::VcxStateSent;
                 return Ok(error::SUCCESS.code_num)
             },
             Err(x) => {
@@ -201,7 +202,7 @@ impl Trustee {
 
     fn update_state(&mut self) {
         match self.state {
-            VcxStateType::VcxStateOfferSent => {
+            VcxStateType::VcxStateSent => {
                 //Check for messages
                 let _ = self._check_msg();
             },
@@ -371,6 +372,10 @@ pub fn new_trustee_offer_messages(connection_handle: u32, match_name: Option<&st
     let mut messages: Vec<TrusteeOffer> = Default::default();
 
     for msg in payload {
+        if msg.sender_did.eq(&my_did){ //Do not want message sent by me
+            continue;
+        }
+
         if msg.msg_type.eq("trusteeOffer") {
             let msg_data = match msg.payload {
                 Some(ref data) => {

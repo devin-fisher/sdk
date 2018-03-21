@@ -70,7 +70,7 @@ export enum ProofState {
 // }
 
 /**
- * @class Class representing a Connection
+ * @class Class representing a Proof
  */
 export class Proof extends VCXBaseWithState {
   protected _releaseFn = rustAPI().vcx_proof_release
@@ -160,9 +160,9 @@ export class Proof extends VCXBaseWithState {
    * @async
    * @memberof Proof
    * @function getState
-   * @returns {Promise<number>}
+   * @returns {Promise<StateType>}
    */
-  async getState (): Promise<number> {
+  async getState (): Promise<StateType> {
     try {
       return await this._getState()
     } catch (error) {

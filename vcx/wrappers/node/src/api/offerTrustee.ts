@@ -3,12 +3,17 @@ import { Callback } from 'ffi'
 import { VCXInternalError } from '../errors'
 import { rustAPI } from '../rustlib'
 import { createFFICallbackPromise } from '../utils/ffi-helpers'
+import { StateType } from './common'
 import { Connection } from './connection'
 import { RecoveryShares } from './recoveryShares'
 import { VCXBaseWithState } from './VCXBaseWithState'
 
 export interface IOfferTrusteeData {
   source_id: string,
+}
+
+export interface IOfferTrusteeCreateData {
+  sourceId: string
 }
 
 /**
@@ -21,12 +26,8 @@ export class OfferTrustee extends VCXBaseWithState {
   protected _serializeFn = rustAPI().vcx_offer_trustee_serialize
   protected _deserializeFn = rustAPI().vcx_offer_trustee_deserialize
 
-  constructor (sourceId, {}) {
-    super(sourceId)
-  }
-
-  static async create (sourceId: string): Promise<OfferTrustee> {
-    const offer = new OfferTrustee(sourceId, {})
+  static async create ({ sourceId }: IOfferTrusteeCreateData): Promise<OfferTrustee> {
+    const offer = new OfferTrustee(sourceId)
     const commandHandle = 0
     try {
       await offer._create((cb) => rustAPI().vcx_offer_trustee_create(
@@ -56,9 +57,9 @@ export class OfferTrustee extends VCXBaseWithState {
    * @description Gets the state of the Offer Trustee object.
    * @async
    * @function getState
-   * @returns {Promise<number>}
+   * @returns {Promise<StateType>}
    */
-  async getState (): Promise<number> {
+  async getState (): Promise<StateType> {
     try {
       return await this._getState()
     } catch (error) {
@@ -144,7 +145,7 @@ export class OfferTrustee extends VCXBaseWithState {
     try {
       await createFFICallbackPromise<void>(
         (resolve, reject, cb) => {
-          const rc = rustAPI().vcx_offer_trustee_send_data(0, this.handle, connection.handle, recoveryShares.handle, cb)
+          const rc = rustAPI().vcx_offer_trustee_send_data(0, this.handle, recoveryShares.handle, connection.handle, cb)
           if (rc) {
             reject(rc)
           }

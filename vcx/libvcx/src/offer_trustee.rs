@@ -73,17 +73,22 @@ impl OfferTrustee {
         self.issued_vk = connection::get_pw_verkey(connection_handle)?;
         self.remote_vk = connection::get_their_pw_verkey(connection_handle)?;
 
-        let offer = self._generate_trustee_offer()?;
-        let payload = match serde_json::to_string(&offer) {
-            Ok(p) => p,
-            Err(_) => return Err(error::INVALID_JSON.code_num)
+        let payload = match settings::test_indy_mode_enabled() {
+            false => {
+                let offer = self._generate_trustee_offer()?;
+                match serde_json::to_string(&offer) {
+                    Ok(p) => p,
+                    Err(_) => return Err(error::INVALID_JSON.code_num)
+                }
+            },
+            true => String::from("dummytestmodedata")
         };
 
         debug!("trustee offer data: {}", payload);
 
         let data = connection::generate_encrypted_payload(&self.issued_vk, &self.remote_vk, &payload, "TRUSTEE_OFFER")?;
 
-        if settings::test_agency_mode_enabled() { httpclient::set_next_u8_response(SEND_MESSAGE_RESPONSE.to_vec()); }
+        if settings::test_agency_mode_enabled() { httpclient::set_next_u8_response(SEND_MESSAGE_RESPONSE.to_vec());}
 
         match messages::send_message().to(&self.issued_did)
             .to_vk(&self.issued_vk)
@@ -99,7 +104,7 @@ impl OfferTrustee {
             },
             Ok(response) => {
                 self.msg_uid = parse_msg_uid(&response[0])?;
-                self.state = VcxStateType::VcxStateOfferSent;
+                self.state = VcxStateType::VcxStateSent;
                 info!("sent trustee offer for: {}", self.handle);
                 return Ok(error::SUCCESS.code_num);
             }
@@ -121,9 +126,16 @@ impl OfferTrustee {
 
         let to = connection::get_pw_did(connection_handle)?;
 
-        self._add_key_to_policy()?;
-        let data = self._generate_trustee_data(recovery_shares_handle)?;
-        let data = serde_json::to_string_pretty(&data).unwrap();
+
+
+        let data = match settings::test_indy_mode_enabled() {
+            false => {
+                self._add_key_to_policy()?;
+                let data = self._generate_trustee_data(recovery_shares_handle)?;
+                serde_json::to_string(&data).or(Err(error::INVALID_JSON.code_num))?
+            },
+            true => String::from("dummytestmodedata")
+        };
 
         debug!("trustee data: {:?}", data);
         let data = connection::generate_encrypted_payload(&self.issued_vk, &self.remote_vk, &data, "TRUSTEE_DATA")?;
@@ -158,7 +170,7 @@ impl OfferTrustee {
         if self.state == VcxStateType::VcxStateRequestReceived {
             return Ok(error::SUCCESS.code_num);
         }
-        else if self.state != VcxStateType::VcxStateOfferSent || self.msg_uid.is_empty() || self.issued_did.is_empty() {
+        else if self.state != VcxStateType::VcxStateSent || self.msg_uid.is_empty() || self.issued_did.is_empty() {
 
             return Ok(error::SUCCESS.code_num);
         }
@@ -214,7 +226,7 @@ impl OfferTrustee {
         Ok(())
     }
 
-    fn _generate_trustee_data(&self, recovery_shares_handle: u32) -> Result<Value, u32> {
+    fn _generate_trustee_data(&self, recovery_shares_handle: u32) -> Result<TrusteeData, u32> {
         let address = settings::get_config_value(settings::CONFIG_IDENTITY_POLICY_ADDRESS)?;
         let agent_key = settings::get_config_value(settings::CONFIG_AGENT_POLICY_VERKEY)?;
         if address.is_empty() {
@@ -247,7 +259,7 @@ impl OfferTrustee {
                 name: String::from("Phone"),
             }]),
         };
-        Ok(serde_json::to_value(&rtn).or(Err(error::INVALID_JSON.code_num))?)
+        Ok(rtn)
     }
 }
 

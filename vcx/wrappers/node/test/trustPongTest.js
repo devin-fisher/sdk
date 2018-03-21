@@ -1,16 +1,14 @@
 const assert = require('chai').assert
 const vcx = require('../dist/index')
 const { stubInitVCX } = require('./helpers')
-const { Connection, StateType, Trustee } = vcx
+const { Connection, StateType, TrustPong } = vcx
 
-describe('A Trustee', function () {
+describe('A TrustPong', function () {
   this.timeout(30000)
 
-  const OFFER = {
-    version: '0.1',
-    msg_type: 'TRUSTEE_OFFER',
-    capabilities: ['RECOVERY_SHARE', 'REVOKE_AUTHZ', 'PROVISION_AUTHZ'],
-    expires: 1517428815
+  const REQ = {
+    nonce: '184470606884409637577315',
+    msg_type: 'TRUST_PING'
   }
 
   before(async () => {
@@ -19,18 +17,18 @@ describe('A Trustee', function () {
   })
 
   it('can be created.', async () => {
-    const obj = await Trustee.create({
+    const obj = await TrustPong.create({
       sourceId: 'Test',
-      offer: OFFER
+      request: JSON.stringify(REQ)
     })
     assert(obj)
-    assert(obj instanceof Trustee)
+    assert(obj instanceof TrustPong)
   })
 
   it('can be serialized.', async () => {
-    const obj = await Trustee.create({
+    const obj = await TrustPong.create({
       sourceId: 'Test',
-      offer: OFFER
+      request: JSON.stringify(REQ)
     })
     assert(obj)
     const val = await obj.serialize()
@@ -38,36 +36,35 @@ describe('A Trustee', function () {
   })
 
   it('can be deserialized.', async () => {
-    const obj = await Trustee.create({
+    const obj = await TrustPong.create({
       sourceId: 'Test',
-      offer: OFFER
+      request: JSON.stringify(REQ)
     })
     assert(obj)
     const val = await obj.serialize()
     assert(val)
-    const obj2 = await Trustee.deserialize(val)
+    const obj2 = await TrustPong.deserialize(val)
     assert(obj2)
-    assert(obj2 instanceof Trustee)
+    assert(obj2 instanceof TrustPong)
   })
 
   it('can get state.', async () => {
-    const obj = await Trustee.create({
+    const obj = await TrustPong.create({
       sourceId: 'Test',
-      offer: OFFER
+      request: JSON.stringify(REQ)
     })
     assert(obj)
     const state = await obj.getState()
-    console.log(state)
     assert(state === StateType.Received)
   })
 
-  it('can get offers.', async () => {
+  it('can get requests.', async () => {
     const connection = await Connection.create({
       id: '234'
     })
-    const offers = await Trustee.new_offers(connection)
-    assert(Array.isArray(offers))
+    const requests = await TrustPong.new_requests(connection)
+    assert(Array.isArray(requests))
   })
 
-  // TODO: Mock having a non-empty array of offers
+  // TODO: Mock having a non-empty array of requests
 })

@@ -82,9 +82,18 @@ impl ProvideAwsCredentials for CustomeCredentialsProvider {
 
 fn _prep_file(file_path: &str, verkey: &str) -> Result<Vec<u8>, u32> {
     let file_path = Path::new(file_path);
-    let mut f = File::open(file_path).or(Err(101 as u32))?;
+
+    let mut f = File::open(file_path).map_err(|e| {
+        error!("Unable to open file '{:?}' -- {:?}", file_path, e);
+        e
+    }).or(Err(101 as u32))?;
+
     let mut rtn: Vec<u8> = Default::default();
-    f.read_to_end(&mut rtn).or(Err(102 as u32))?;
+
+    f.read_to_end(&mut rtn).map_err(|e|{
+        error!("Unable to read file '{:?}' -- {:?}", file_path, e);
+        e
+    }).or(Err(102 as u32))?;
 
     let rtn = libindy::crypto::prep_anonymous_msg(verkey, &rtn[..])?; //Encrypt !!
     Ok(rtn)
@@ -99,8 +108,10 @@ fn _send_to_s3(data: Vec<u8>, entry: &ManifestEntry) -> Result<(), u32> {
     put_request.key = entry.s3_key.to_owned();
     put_request.bucket = entry.s3_bucket.to_owned();
     put_request.body = Some(data);
-    let result = client.put_object(&put_request).unwrap();
-    println!("{:?}", result);
+    let result = client.put_object(&put_request).map_err(|e| {
+        error!("Unable to send data to s3 '{:?}' -- {:?}", entry, e);
+        e
+    }).or(Err(106 as u32))?;
 
     Ok(())
 }
@@ -148,14 +159,27 @@ fn backup_identity_files(file_list: Vec<String>, verkey: &str) -> Result<(), u32
 pub fn do_backup(file_list_json: &str) -> Result<u32, u32> {
     let backup_verkey = settings::get_config_value(settings::CONFIG_RECOVERY_VERKEY)?;
 
-    let file_list: Vec<String> = serde_json::from_str(file_list_json).or(Err(error::INVALID_JSON.code_num))?;
+    let file_list: Vec<String> = serde_json::from_str(file_list_json)
+        .map_err(|e| {
+            error!("JSON with file list is not a list of Strings or is not valid JSON -- {}", file_list_json);
+            e
+        }).or(Err(error::INVALID_JSON.code_num))?;
 
     if file_list.len() == 0 {
         warn!("Files list to backup is empty");
         return Ok(error::SUCCESS.code_num);
     }
 
-    backup_identity_files(file_list, &backup_verkey)?;
+    match settings::test_indy_mode_enabled() {
+        false => {
+            backup_identity_files(file_list, &backup_verkey)?;
+        },
+        true => {
+            info!("Backup not sent to S3 in test mode");
+            info!("files to backup are: {}", file_list_json);
+        }
+    };
+
     Ok(error::SUCCESS.code_num)
 }
 

@@ -3,11 +3,19 @@ import { Callback } from 'ffi'
 import { VCXInternalError } from '../errors'
 import { rustAPI } from '../rustlib'
 import { createFFICallbackPromise } from '../utils/ffi-helpers'
+import { StateType } from './common'
 import { Connection } from './connection'
 import { VCXBaseWithState } from './VCXBaseWithState'
 
 export interface ITrusteeData {
   source_id: string,
+}
+
+export type ITrusteeOffer = object
+
+export interface ITrusteeCreateData {
+  sourceId: string,
+  offer: ITrusteeOffer
 }
 
 export class Trustee extends VCXBaseWithState {
@@ -17,17 +25,14 @@ export class Trustee extends VCXBaseWithState {
   protected _serializeFn = rustAPI().vcx_trustee_serialize
   protected _deserializeFn = rustAPI().vcx_trustee_deserialize
 
-  constructor (sourceId) {
-    super(sourceId)
-  }
-
-  static async create (sourceId: string, offer: string): Promise<Trustee> {
+  static async create ({ sourceId, offer }: ITrusteeCreateData): Promise<Trustee> {
     const trustee = new Trustee(sourceId)
+    const offerStr = JSON.stringify(offer)
     try {
       await trustee._create((cb) => rustAPI().vcx_trustee_create_with_offer(
         0,
         sourceId,
-        offer,
+        offerStr,
         cb
         )
       )
@@ -47,8 +52,8 @@ export class Trustee extends VCXBaseWithState {
     }
   }
 
-  static async new_offers (connection: Connection): Promise<string> {
-    return await createFFICallbackPromise<string>(
+  static async new_offers (connection: Connection): Promise<ITrusteeOffer[]> {
+    const offersStr = await createFFICallbackPromise<string>(
       (resolve, reject, cb) => {
         const rc = rustAPI().vcx_trustee_new_offers(0, connection.handle, cb)
         if (rc) {
@@ -63,9 +68,11 @@ export class Trustee extends VCXBaseWithState {
         }
       })
     )
+    const offers = JSON.parse(offersStr)
+    return offers
   }
 
-  async getState (): Promise<number> {
+  async getState (): Promise<StateType> {
     try {
       return await this._getState()
     } catch (error) {
