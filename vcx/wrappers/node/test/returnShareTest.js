@@ -93,7 +93,7 @@ describe('A ReturnShare', function () {
 
     const trustee = await Trustee.create({
       sourceId: 'Test',
-      offer: JSON.stringify(TRUSTEE_OFFER)
+      offer: TRUSTEE_OFFER
     }) // NOT FULLY SETUP TRUSTEE BUT TEST MODE WILL ALLOW THIS TO WORK
 
     await obj.sendShare(connection, trustee)
