@@ -190,6 +190,7 @@ pub fn do_restore(request_shares_handles: &str) -> Result<u32, u32> {
 mod tests {
     use super::*;
 
+    #[ignore]
     #[test]
     fn test_backup_files() {
 

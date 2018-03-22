@@ -525,7 +525,7 @@ mod tests {
 
         let handle = create_proof(Some("id".to_string()),
                                   &build_proof_request()).unwrap();
-        assert_eq!(1, get_state(handle).unwrap())
+        assert_eq!(3, get_state(handle).unwrap())
     }
 
     #[test]
