@@ -10,9 +10,7 @@ use utils::timeout::TimeoutUtils;
 use utils::libindy::ledger;
 
 use serde_json::Value;
-
 use utils::error::INVALID_JSON;
-
 
 extern {
     fn indy_create_and_store_new_policy(command_handle: i32,
@@ -72,10 +70,13 @@ pub fn update_verkey_in_policy(wallet_h: i32, pool_h: i32, admin_vk: &str, new_v
                                                     address).unwrap();
             let updated_policy: Value = serde_json::from_str(&updated_policy).unwrap();
 
-            //            Some(updated_policy["agents"][&new_vk]["double_commitment"]
-//                    .as_str().ok_or(INVALID_JSON.code_num)?.to_string())
-            use utils::dkms_constants::get_prime;
-            Some(get_prime())
+            Some(updated_policy["agents"][&new_vk]["double_commitment"]
+            .as_str().ok_or(INVALID_JSON.code_num).map_err(|e|{
+                error!("Unable to get commitment from policy stored in the wallet");
+                e
+            })?.to_string())
+//            use utils::dkms_constants::get_prime;
+//            Some(get_prime())
         },
         false => None
 
@@ -93,7 +94,7 @@ pub fn update_verkey_in_policy(wallet_h: i32, pool_h: i32, admin_vk: &str, new_v
         comm_ref
     ).unwrap();
 
-    println!("Add key txn: {}", add_agent_txn);
+    debug!("Add key txn: {}", add_agent_txn);
 
 
 
@@ -103,7 +104,7 @@ pub fn update_verkey_in_policy(wallet_h: i32, pool_h: i32, admin_vk: &str, new_v
                                                          add_agent_txn)?;
 
 
-    println!("**submit results: {}", result);
+    debug!("Submit results: {}", result);
     Ok(())
 }
 

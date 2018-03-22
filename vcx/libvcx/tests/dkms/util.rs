@@ -11,10 +11,14 @@ use std::io::Write;
 use std::io::Read;
 use std::path::Path;
 use std::fs::remove_file;
+use std::io;
+
+const LONG_STAR: usize = 64;
+const SHORT_STAR: usize = 5;
 
 pub fn print_chapter(chap_name: &str, line_len: Option<usize>) {
-    let line_len = line_len.unwrap_or(64);
-    let short_star_len = 5;
+    let line_len = line_len.unwrap_or(LONG_STAR);
+    let short_star_len = SHORT_STAR;
     let short_space_len = (line_len - (2*short_star_len) - chap_name.len())/2;
 
     let line = format!("{star}{space}{name}{space}{star}"
@@ -85,7 +89,7 @@ pub fn send_via_file(data: &str, path: &Path, _timeout: Option<u32>) -> Result<(
             break;
         }
 
-        should_print =should_print_wait_msg("waiting for invite to be taken!",
+        should_print =should_print_wait_msg("Waiting for invite to be taken!",
                                             should_print,
                                             8);
         thread::sleep(time::Duration::from_secs(1));
@@ -107,10 +111,34 @@ pub fn receive_via_file(path: &Path, _timeout: Option<u32>) -> Result<String, ()
             return Ok(rtn);
         }
 
-        should_print =should_print_wait_msg("waiting for invite!",
+        should_print =should_print_wait_msg("Waiting for invite!",
                                             should_print,
                                             8);
 
         thread::sleep(time::Duration::from_secs(1));
     }
+}
+
+pub fn gate(msg: Option<&str>, use_gate: bool) {
+    if !use_gate {
+        return;
+    }
+
+    println!("\n{}\n","*".repeat(LONG_STAR));
+    match msg {
+        None => {
+            print!("Press any enter to continue . . .")
+        }
+        Some(m) => {
+            print!("{}", m);
+        }
+    }
+    io::stdout().flush().unwrap();
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)
+        .ok()
+        .expect("Couldn't read line");
+
+    println!();
 }

@@ -186,7 +186,7 @@ pub fn do_backup(file_list_json: &str) -> Result<u32, u32> {
 pub fn do_restore(request_shares_handles: &str) -> Result<u32, u32> {
     let handles: Vec<u32> = serde_json::from_str(request_shares_handles).or(Err(error::INVALID_JSON.code_num))?;
 
-    println!("{:?}", handles);
+    info!("Recovery on these share handles: {:?}", handles);
 
     let mut shares: Vec<Value> = Vec::default();
     for handle in handles {
@@ -198,7 +198,6 @@ pub fn do_restore(request_shares_handles: &str) -> Result<u32, u32> {
     }
 
     let shares =  serde_json::to_string_pretty(&shares).unwrap();
-    println!("shares:{}",shares);
 
     let w_h = libindy::wallet::get_wallet_handle();
     let verkey = _recover_key(&shares, w_h)?;
@@ -304,7 +303,7 @@ fn _sss_recovery(shares_json: &str) -> Result<Value, u32> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+//    use super::*;
 
 //    #[test]
 //    fn test_backup_files() {

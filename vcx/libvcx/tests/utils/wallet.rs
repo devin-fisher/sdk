@@ -40,7 +40,7 @@ fn open_wallet_db(wallet_name: Option<&str>, pool_name: Option<&str>) -> Result<
         None => _wallet_default_file()?
     };
 
-    println!("Opening wallet at {:?}", db_file);
+//    println!("Opening wallet at {:?}", db_file);
     Connection::open(db_file.as_path())
         .or(Err("Unable to connect to the wallet".to_string()))
 }
@@ -56,9 +56,9 @@ pub fn add_wallet_entry_str(wallet_name: Option<&str>, pool_name: Option<&str>, 
 }
 
 pub fn add_wallet_entries(wallet_name: Option<&str>, pool_name: Option<&str>, insert_val: &[[&str;3]]) -> Result<(), String> {
-    println!("Adding wallet entries");
+//    println!("Adding wallet entries");
     for entry in insert_val {
-        println!("Adding entry for {}", entry[0]);
+//        println!("Adding entry for {}", entry[0]);
         add_wallet_entry_str(wallet_name, pool_name, &entry[0], &entry[1], &entry[2])?;
     }
     Ok(())

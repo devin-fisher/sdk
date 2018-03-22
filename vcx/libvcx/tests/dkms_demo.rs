@@ -35,7 +35,13 @@ use dkms::constants::{DEV_GENESIS_NODE_TXNS,
                       ACCOUNT_CERT_DID};
 use dkms::constants;
 use dkms::actor::Actor;
-use dkms::util::{print_chapter, find_actor, pr_json, send_via_file, receive_via_file, should_print_wait_msg};
+use dkms::util::{print_chapter,
+                 find_actor,
+                 pr_json,
+                 send_via_file,
+                 receive_via_file,
+                 should_print_wait_msg,
+                 gate};
 use utils::wallet::wallet_file_path;
 
 use vcx::settings::DEFAULT_GENESIS_PATH;
@@ -49,6 +55,8 @@ const INVITE_RECOVERY_BOB_ALICE_PATH: &'static str = "/tmp/recovery-alice-bob-in
 const INVITE_RECOVERY_CUNION_ALICE_PATH: &'static str = "/tmp/recovery-alice-cunion-invite.json";
 
 const POOL_NAME: &'static str = "dkms_pool";
+
+const USE_GATES: bool = true;
 
 lazy_static! {
     static ref DB: Mutex<HashMap<String, String>> = Default::default();
@@ -84,9 +92,21 @@ fn print_err<T: Debug>(err: T) -> T {
     err
 }
 
-fn await_state(handle: u32, state: u32, func: api_caller::fn_u32_r_u32_u32, timeout: Option<u64>) -> Result<(), u32> {
+fn state_name(state: u32) -> &'static str {
+    match state {
+        0 => "None",
+        1 => "Initialized",
+        2 => "Sent",
+        3 => "Received",
+        4 => "Accepted",
+        _ => "Unknown"
+    }
+}
+
+fn await_state(await_for: &str, handle: u32, state: u32, func: api_caller::fn_u32_r_u32_u32, timeout: Option<u64>) -> Result<(), u32> {
     let timeout = timeout.unwrap_or(20 as u64);
     let mut should_print = 0;
+    println!("{} waiting for {} state", await_for, state_name(state));
     loop {
 
         let cur_state = api_caller::u32_r_u32(handle, func)?;
@@ -94,13 +114,13 @@ fn await_state(handle: u32, state: u32, func: api_caller::fn_u32_r_u32_u32, time
             break;
         }
 
-        should_print = should_print_wait_msg(format!("waiting for state: {} -- currently: {}", state, cur_state).as_ref(),
+        should_print = should_print_wait_msg(format!("{} waiting for state: {} -- currently: {}",await_for, state_name(state), state_name(cur_state)).as_ref(),
                                             should_print,
                                             4);
         thread::sleep(Duration::from_secs(timeout/10))
     }
 
-    println!("reached state: {}", state);
+    println!("{} reached state: {}", await_for, state_name(state));
     Ok(())
 }
 
@@ -131,6 +151,7 @@ fn send_conn(other_party: &str, path: &Path) -> Result<u32, u32> {
                                         vcx::api::connection::vcx_connection_create
     ).map_err(print_err)?;
 
+    println!("Connecting to {}", other_party);
     println!("Connection handle: {}", alice_h);
 
     let invite = api_caller::u32_str_r_u32_str(alice_h,
@@ -138,28 +159,32 @@ fn send_conn(other_party: &str, path: &Path) -> Result<u32, u32> {
                                                vcx::api::connection::vcx_connection_connect).map_err(print_err)?;
     let invite = invite.unwrap();
 
-    println!("Connection Details: \n");
-    pr_json(&invite);
+//    println!("Connection Details: \n");
+//    pr_json(&invite);
 
+    let gate_msg = format!("Send Connection Invite to {}[Yes]:", other_party);
+    gate(Some(gate_msg.as_str()), USE_GATES);
 
     println!("Sending invite via file at {:?}", path);
     send_via_file(&invite, &path, None).unwrap();
 
-    await_state(alice_h,
+    await_state("Connection",
+                alice_h,
                 4, //VcxStateAccepted
                 vcx::api::connection::vcx_connection_update_state,
                 None).map_err(print_err)?;
 
+    println!("Connection Complete");
     Ok(alice_h)
 }
 
 fn receive_conn(other_party: &str, path: &Path) -> Result<u32, u32> {
     let invite = receive_via_file(path, None).unwrap();
 
-    println!("Connection Details: \n");
-    pr_json(&invite);
+    println!("Connecting to {}", other_party);
+//    println!("Connection Details: \n");
+//    pr_json(&invite);
 
-    println!("Creating connection with {}", other_party);
     let handle = api_caller::str_str_r_u32(other_party,
                                              &invite,
                                              vcx::api::connection::vcx_connection_create_with_invite
@@ -167,17 +192,22 @@ fn receive_conn(other_party: &str, path: &Path) -> Result<u32, u32> {
 
     println!("Connection handle: {}", handle);
 
+    let gate_msg = format!("Accept Connection Invite from {}[Yes]:", other_party);
+    gate(Some(gate_msg.as_str()), USE_GATES);
+
     println!("Connecting to connection with {}", other_party);
     let _invite = api_caller::u32_str_r_u32_str(handle,
                                                "",
                                                vcx::api::connection::vcx_connection_connect
     ).map_err(print_err)?;
 
-    await_state(handle,
+    await_state("Connection",
+                handle,
                 4, //VcxStateAccepted
                 vcx::api::connection::vcx_connection_update_state,
                 None).map_err(print_err)?;
 
+    println!("Connection Complete");
     Ok(handle)
 }
 
@@ -192,10 +222,10 @@ fn prep_backup_file(actor: &Actor, actor_dir: &Path) -> String {
 }
 
 fn chapter_1_demo(actor: &Actor) {
-    print_chapter("CHAPTER ONE", None);
-
     match actor {
         &Actor::Alice => {
+            print_chapter("CHAPTER ONE", None);
+            gate(None, USE_GATES);
             println!("ENTER ALICE");
             let invite_path = Path::new(INVITE_CUNION_ALICE_PATH);
             let cunion_h = receive_conn("CUNION", invite_path).expect("Should connect to CUNION");
@@ -226,7 +256,8 @@ fn chapter_1_demo(actor: &Actor) {
 
 
             println!("Look for claim");
-            await_state(claim_h,
+            await_state("Claim",
+                        claim_h,
                         4, //VcxStateAccepted
                         vcx::api::claim::vcx_claim_update_state,
                         None).unwrap();
@@ -254,7 +285,8 @@ fn chapter_1_demo(actor: &Actor) {
                                       cunion_h,
                                       vcx::api::trust_pong::vcx_trust_pong_send).unwrap();
 
-            await_state(pong_h,
+            await_state("DID Auth",
+                        pong_h,
                         4, //VcxStateAccepted
                         vcx::api::trust_pong::vcx_trust_pong_update_state,
                         None).unwrap();
@@ -265,6 +297,8 @@ fn chapter_1_demo(actor: &Actor) {
 
         },
         &Actor::CUnion => {
+            print_chapter("CHAPTER ONE", None);
+            gate(None, USE_GATES);
             println!("ENTER CUnion");
             let invite_path = Path::new(INVITE_CUNION_ALICE_PATH);
             let alice_h = send_conn("Alice", invite_path).expect("Should connect to CUNION");
@@ -281,7 +315,8 @@ fn chapter_1_demo(actor: &Actor) {
                                       alice_h,
                                       vcx::api::issuer_claim::vcx_issuer_send_claim_offer).unwrap();
 
-            await_state(claim_h,
+            await_state("Claim",
+                        claim_h,
                         3, //VcxStateRequestReceived
                         vcx::api::issuer_claim::vcx_issuer_claim_update_state,
                         None).unwrap();
@@ -290,7 +325,8 @@ fn chapter_1_demo(actor: &Actor) {
                                       alice_h,
                                       vcx::api::issuer_claim::vcx_issuer_send_claim).unwrap();
 
-            await_state(claim_h,
+            await_state("Claim",
+                        claim_h,
                         4, //VcxStateAccepted
                         vcx::api::issuer_claim::vcx_issuer_claim_update_state,
                         None).unwrap();
@@ -307,7 +343,8 @@ fn chapter_1_demo(actor: &Actor) {
             ).unwrap();
 
             println!("Awaiting return of ping from Alice.");
-            await_state(auth_h,
+            await_state("DID Auth",
+                        auth_h,
                         4, //VcxStateAccepted
                         vcx::api::trust_ping::vcx_trust_ping_update_state,
                         None).unwrap();
@@ -321,10 +358,9 @@ fn chapter_1_demo(actor: &Actor) {
 }
 
 fn chapter_2_demo(actor: &Actor) {
-    print_chapter("CHAPTER TWO", None);
-
     match actor {
         &Actor::Alice => {
+            print_chapter("CHAPTER TWO", None);
             println!("ENTER ALICE");
             let invite_path = Path::new(INVITE_BOB_ALICE_PATH);
             let bob_h = send_conn("Bob", invite_path).expect("Should connect to Bob");
@@ -353,7 +389,8 @@ fn chapter_2_demo(actor: &Actor) {
                                       bob_h,
                                       vcx::api::disclosed_proof::vcx_disclosed_proof_send_proof).unwrap();
 
-            await_state(proof_h,
+            await_state("Proof",
+                        proof_h,
                         4, //VcxStateAccepted
                         vcx::api::disclosed_proof::vcx_disclosed_proof_update_state,
                         None).unwrap();
@@ -362,6 +399,7 @@ fn chapter_2_demo(actor: &Actor) {
 
         },
         &Actor::Bob => {
+            print_chapter("CHAPTER TWO", None);
             println!("ENTER BOB");
             let invite_path = Path::new(INVITE_BOB_ALICE_PATH);
             let alice_h = receive_conn("Alice", invite_path).expect("Should connect to Alice");
@@ -399,7 +437,8 @@ fn chapter_2_demo(actor: &Actor) {
                                       alice_h,
                                       vcx::api::proof::vcx_proof_send_request).unwrap();
 
-            await_state(proof_h,
+            await_state("Proof",
+                        proof_h,
                         4, //VcxStateAccepted
                         vcx::api::proof::vcx_proof_update_state,
                         None).unwrap();
@@ -418,10 +457,9 @@ fn chapter_2_demo(actor: &Actor) {
 }
 
 fn chapter_3_demo(actor: &Actor) {
-    print_chapter("CHAPTER THREE", None);
-
     match actor {
         &Actor::Alice => {
+            print_chapter("CHAPTER THREE", None);
             println!("ENTER ALICE");
             let invite_path = Path::new(INVITE_ALICE_DAKOTA_PATH);
             let bob_h = receive_conn("Bob", invite_path).expect("Should connect to Dakota");
@@ -448,13 +486,15 @@ fn chapter_3_demo(actor: &Actor) {
                                       bob_h,
                                       vcx::api::disclosed_proof::vcx_disclosed_proof_send_proof).unwrap();
 
-            await_state(proof_h,
+            await_state("Proof",
+                        proof_h,
                         4, //VcxStateAccepted
                         vcx::api::disclosed_proof::vcx_disclosed_proof_update_state,
                         None).unwrap();
 
         },
         &Actor::Dakota => {
+            print_chapter("CHAPTER THREE", None);
             println!("ENTER DAKOTA");
             let invite_path = Path::new(INVITE_ALICE_DAKOTA_PATH);
             let alice_h = send_conn("Alice", invite_path).expect("Should connect to Alice");
@@ -482,7 +522,8 @@ fn chapter_3_demo(actor: &Actor) {
                                       alice_h,
                                       vcx::api::proof::vcx_proof_send_request).unwrap();
 
-            await_state(proof_h,
+            await_state("Proof",
+                        proof_h,
                         4, //VcxStateAccepted
                         vcx::api::proof::vcx_proof_update_state,
                         None).unwrap();
@@ -504,10 +545,9 @@ fn chapter_3_demo(actor: &Actor) {
 }
 
 fn chapter_4_demo(actor: &Actor, dir_path: &Path) {
-    print_chapter("CHAPTER FOUR", None);
-
     match actor {
         &Actor::Alice => {
+            print_chapter("CHAPTER FOUR", None);
             println!("ENTER ALICE");
 
             let bob_h: u32 = db_get("bob_for_alice_h").unwrap().parse().unwrap();
@@ -528,7 +568,8 @@ fn chapter_4_demo(actor: &Actor, dir_path: &Path) {
                                       bob_h,
                                       vcx::api::offer_trustee::vcx_offer_trustee_send_offer).unwrap();
 
-            await_state(trustee_h,
+            await_state("Trustee",
+                        trustee_h,
                         3, //VcxStateRequestReceived
                         vcx::api::offer_trustee::vcx_offer_trustee_update_state,
                         None).unwrap();
@@ -538,7 +579,8 @@ fn chapter_4_demo(actor: &Actor, dir_path: &Path) {
                                           bob_h,
                                           vcx::api::offer_trustee::vcx_offer_trustee_send_data).unwrap();
 
-            await_state(trustee_h,
+            await_state("Trustee",
+                        trustee_h,
                         4, //VcxStateAccepted
                         vcx::api::offer_trustee::vcx_offer_trustee_update_state,
                         None).unwrap();
@@ -557,7 +599,8 @@ fn chapter_4_demo(actor: &Actor, dir_path: &Path) {
                                       cunion_h,
                                       vcx::api::offer_trustee::vcx_offer_trustee_send_offer).unwrap();
 
-            await_state(trustee_h,
+            await_state("Trustee",
+                        trustee_h,
                         3, //VcxStateRequestReceived
                         vcx::api::offer_trustee::vcx_offer_trustee_update_state,
                         None).unwrap();
@@ -567,7 +610,8 @@ fn chapter_4_demo(actor: &Actor, dir_path: &Path) {
                                           cunion_h,
                                           vcx::api::offer_trustee::vcx_offer_trustee_send_data).unwrap();
 
-            await_state(trustee_h,
+            await_state("Trustee",
+                        trustee_h,
                         4, //VcxStateAccepted
                         vcx::api::offer_trustee::vcx_offer_trustee_update_state,
                         None).unwrap();
@@ -583,6 +627,7 @@ fn chapter_4_demo(actor: &Actor, dir_path: &Path) {
             api_caller::str_r_check(&prep_backup_file(actor, dir_path), vcx::api::backup::vcx_backup_do_backup).unwrap();
         },
         &Actor::Bob => {
+            print_chapter("CHAPTER FOUR", None);
             println!("ENTER BOB");
 
             let alice_h: u32 = db_get("alice_for_bob_h").unwrap().parse().unwrap();
@@ -616,7 +661,8 @@ fn chapter_4_demo(actor: &Actor, dir_path: &Path) {
 
 
             println!("Look for Trustee Data");
-            await_state(trustee_h,
+            await_state("Trustee",
+                        trustee_h,
                         4, //VcxStateAccepted
                         vcx::api::trustee::vcx_trustee_update_state,
                         None).unwrap();
@@ -625,6 +671,7 @@ fn chapter_4_demo(actor: &Actor, dir_path: &Path) {
 
         },
         &Actor::CUnion => {
+            print_chapter("CHAPTER FOUR", None);
             println!("ENTER CUNION");
 
             let alice_h: u32 = db_get("alice_for_cunion_h").unwrap().parse().unwrap();
@@ -658,7 +705,8 @@ fn chapter_4_demo(actor: &Actor, dir_path: &Path) {
 
 
             println!("Look for Trustee Data");
-            await_state(trustee_h,
+            await_state("Trustee",
+                        trustee_h,
                         4, //VcxStateAccepted
                         vcx::api::trustee::vcx_trustee_update_state,
                         None).unwrap();
@@ -670,10 +718,9 @@ fn chapter_4_demo(actor: &Actor, dir_path: &Path) {
 }
 
 fn chapter_5_demo(actor: &Actor, _dir_path: &Path) {
-    print_chapter("CHAPTER FIVE", None);
-
     match actor {
         &Actor::AliceNew => {
+            print_chapter("CHAPTER FIVE", None);
             println!("ENTER ALICE's New Agent");
 
             println!("Recovery Connection with Bob:");
@@ -694,7 +741,8 @@ fn chapter_5_demo(actor: &Actor, _dir_path: &Path) {
                                       recovery_bob_h,
                                       vcx::api::request_share::vcx_request_share_send_request).unwrap();
 
-            await_state(share_from_bob_h,
+            await_state("Return Share",
+                        share_from_bob_h,
                         4, //VcxStateAccepted
                         vcx::api::request_share::vcx_request_share_update_state,
                         None).unwrap();
@@ -717,7 +765,7 @@ fn chapter_5_demo(actor: &Actor, _dir_path: &Path) {
                                       recovery_cunion_h,
                                       vcx::api::request_share::vcx_request_share_send_request).unwrap();
 
-            await_state(share_from_cunion_h,
+            await_state("Share Request",share_from_cunion_h,
                         4, //VcxStateAccepted
                         vcx::api::request_share::vcx_request_share_update_state,
                         None).unwrap();
@@ -729,6 +777,7 @@ fn chapter_5_demo(actor: &Actor, _dir_path: &Path) {
                                     vcx::api::backup::vcx_backup_do_restore).unwrap();
         }
         &Actor::Bob => {
+            print_chapter("CHAPTER FIVE", None);
             println!("ENTER BOB");
 
             let trustee_h: u32 = db_get("trustee_handle").unwrap().parse().unwrap();
@@ -779,12 +828,14 @@ fn chapter_5_demo(actor: &Actor, _dir_path: &Path) {
                                       trustee_h,
                                       vcx::api::return_share::vcx_return_share_send_share).unwrap();
 
-            await_state(return_share_h,
+            await_state("Share Request",
+                        return_share_h,
                         4, //VcxStateAccepted
                         vcx::api::return_share::vcx_return_share_update_state,
                         None).unwrap();
         },
         &Actor::CUnion => {
+            print_chapter("CHAPTER FIVE", None);
             println!("ENTER CUNION");
 
             let trustee_h: u32 = db_get("trustee_handle").unwrap().parse().unwrap();
@@ -818,7 +869,8 @@ fn chapter_5_demo(actor: &Actor, _dir_path: &Path) {
                                       trustee_h,
                                       vcx::api::return_share::vcx_return_share_send_share).unwrap();
 
-            await_state(return_share_h,
+            await_state("Share Request",
+                        return_share_h,
                         4, //VcxStateAccepted
                         vcx::api::return_share::vcx_return_share_update_state,
                         None).unwrap();
@@ -832,14 +884,16 @@ fn _get_current_policy(w_h: i32, p_h: i32, verkey: &str, address: &str) -> Resul
     let get_policy_txn = libindy::ledger::libindy_build_get_agent_authz_request(
         &verkey,
         address
-    ).unwrap();
+    ).expect("Building txn for current policy");
 
     let result = libindy::ledger::libindy_sign_and_submit_request(p_h,
                                                                   w_h,
                                                                   verkey.to_owned(),
-                                                                  get_policy_txn).unwrap();
+                                                                  get_policy_txn
+    ).expect("submitting txn to ledger for current policy");
 
-    let result: Value = serde_json::from_str(&result).or(Err(88 as u32)).unwrap();
+    let result: Value = serde_json::from_str(&result).or(Err(88 as u32))
+        .expect("Result from ledger(current policy) to be valid json");
     Ok(result)
 }
 
@@ -849,7 +903,8 @@ fn refresh_policy(w_h: i32, p_h: i32, verkey: &str, address: &str) -> Result<(),
 
     let policy: Value = _get_current_policy(w_h, p_h, verkey, address)?;
 
-    println!("Dirty Policy: \n{}", serde_json::to_string_pretty(&policy).unwrap());
+    println!("\nCleaning Policy for demo");
+    println!("Dirty Entries:");
 
     let data = policy["result"]["data"].as_array().unwrap();
 
@@ -863,6 +918,8 @@ fn refresh_policy(w_h: i32, p_h: i32, verkey: &str, address: &str) -> Result<(),
             continue;
         }
 
+        println!("{}", serde_json::to_string_pretty(&auth).unwrap());
+
         let update_txn = libindy::ledger::libindy_build_agent_authz_request(
             verkey,
             address,
@@ -871,16 +928,18 @@ fn refresh_policy(w_h: i32, p_h: i32, verkey: &str, address: &str) -> Result<(),
             None
         ).unwrap();
 
-        let result = libindy::ledger::libindy_sign_and_submit_request(p_h,
+        let _result = libindy::ledger::libindy_sign_and_submit_request(p_h,
                                                                       w_h,
                                                                       verkey.to_owned(),
                                                                       update_txn).unwrap();
+//        println!("Result from ledger: \n{}", _result);
     }
 
 
-    let policy: Value = _get_current_policy(w_h, p_h, verkey, address).unwrap();
-    println!("Clean Policy: \n{}", serde_json::to_string_pretty(&policy).unwrap());
+//    let policy: Value = _get_current_policy(w_h, p_h, verkey, address).unwrap();
+//    println!("Clean Policy: \n{}", serde_json::to_string_pretty(&policy).unwrap());
 
+    println!();
     Ok(())
 
 }
@@ -889,7 +948,22 @@ fn init_policy(address: &str) -> Result<(), u32> {
     let wallet_name = "CLEAN_POLICY";
 
     let p_h = vcx::utils::libindy::pool::libindy_open_pool_ledger(POOL_NAME, None).unwrap();
-    vcx::utils::libindy::wallet::create_wallet(POOL_NAME, wallet_name, None, None, None).unwrap();
+    match vcx::utils::libindy::wallet::create_wallet(POOL_NAME,
+                                                     wallet_name,
+                                                     None,
+                                                     None,
+                                                     None) {
+        Ok(_) => (),
+        Err(_) => {
+            vcx::utils::libindy::wallet::delete_wallet(wallet_name).unwrap();
+            vcx::utils::libindy::wallet::create_wallet(POOL_NAME,
+                                                       wallet_name,
+                                                       None,
+                                                       None,
+                                                       None
+            ).unwrap();
+        }
+    }
     let w_h = vcx::utils::libindy::wallet::open_wallet(wallet_name, None, None).unwrap();
 
     let recovery_vk = vcx::utils::libindy::crypto::libindy_create_key(w_h,
@@ -907,6 +981,7 @@ fn init_policy(address: &str) -> Result<(), u32> {
 }
 
 fn init_pool() {
+    println!("Setup ledger connection");
     let gen_file_path = Path::new(DEFAULT_GENESIS_PATH);
     println!("Writing genesis file at {:?}", gen_file_path);
 
@@ -916,10 +991,11 @@ fn init_pool() {
         gen_file.write_all("\n".as_bytes()).unwrap();
     }
     gen_file.flush().unwrap();
+    println!("Complete ledger setup");
+    println!();
 }
 
 fn init_actor(actor: &Actor, dir: &Path) {
-//    settings::set_config_value(settings::CONFIG_ENABLE_TEST_MODE, "true");
     print_chapter("INIT ACTOR", None);
     println!("Setuping {:?}'s wallet and configuration.", actor);
     wallet::add_wallet_entries(Some(asset_name(actor).as_str()),
@@ -935,7 +1011,7 @@ fn init_actor(actor: &Actor, dir: &Path) {
     let wallet_name = asset_name(actor);
 
     if let &Actor::Alice = actor {
-        let policy_address = init_policy(&actor_config.identity_policy_address).unwrap();
+        init_policy(&actor_config.identity_policy_address).unwrap();
     }
 
     let config = json!(
@@ -976,11 +1052,13 @@ fn init_actor(actor: &Actor, dir: &Path) {
     api_caller::str_r_check(config_file_path.to_str().unwrap(), vcx::api::vcx::vcx_init).unwrap();
     thread::sleep(time::Duration::from_millis(10));
 
+    println!("Complete Setup!");
+    println!();
+
 }
 
 fn full_demo(actor: &Actor) {
     init_pool();
-
     let dir = tempdir::TempDir::new(&asset_name(actor)).unwrap();
     {
         let dir_path = dir.path();
@@ -988,10 +1066,10 @@ fn full_demo(actor: &Actor) {
 
         init_actor(actor, dir_path);
         chapter_1_demo(actor);
-        chapter_2_demo(actor);
-        chapter_3_demo(actor);
-        chapter_4_demo(actor, dir_path);
-        chapter_5_demo(actor, dir_path);
+//        chapter_2_demo(actor);
+//        chapter_3_demo(actor);
+//        chapter_4_demo(actor, dir_path);
+//        chapter_5_demo(actor, dir_path);
 
         print_chapter("DONE", None);
     }
