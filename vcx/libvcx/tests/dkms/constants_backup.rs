@@ -42,15 +42,15 @@ pub fn config_info(actor: &Actor) -> ConfigInfo {
     match actor {
         &Actor::Alice => {
             ConfigInfo {
-                agent_endpoint: String::from("https://dkmscas.pdev.evernym.com"),
-                agency_pairwise_did: String::from("YTpNMUPavSFvTXYJHSZgsh"),
-                agency_pairwise_verkey: String::from("J9b45WK4tW56kSV2SC1UN5DKkZdMHAejv8eVoNuaXMkX"),
-                enterprise_did_agent: String::from("4A2GxCWKfxqUFEC8ozixJq"),
-                agent_enterprise_verkey: String::from("2ikgmgutu3DLHfoofp6ibLfe9fZqjMvDo36hnoWXT5oZ"),
+                agent_endpoint: String::from("https://dkmseas.pdev.evernym.com"),
+                agency_pairwise_did: String::from("WUxzBH67yC4qnYWwby2HTW"),
+                agency_pairwise_verkey: String::from("H4zNegfgTgBXfsSGLYhcKzxPQ2BsTBvUGi8wnv2xZNGZ"),
+                enterprise_did_agent: String::from("6XhshVzmi49QVhJwAHYxeU"),
+                agent_enterprise_verkey: String::from("41o7JQSv6WnU5hm3wb5dXitfSDbqoXHMQQCc9rEyebyF"),
                 enterprise_did: String::from("RiPVER16apmvuRmUkoQphz"),
                 enterprise_verkey: String::from("EUFDEw2ZoJnJh3Ni7nW7de2F9cGH8NAU9ixkAcj4Xdn7"),
-                agent_pairwise_did: String::from("D21h4rojfACty4EUH4FCQg"),
-                agent_pairwise_verkey: String::from("7YtvPnhSYfF5a6DQb9AsGKEs1eYK6uXx7nUkSAPUZdX8"),
+                agent_pairwise_did: String::from("N1WbZTgYjDXsymQxZtMigF"),
+                agent_pairwise_verkey: String::from("CT8Wh28YEeBQRS1YFW4W6T3ujrVDgZAAL9xu5VjPAwsd"),
                 identity_policy_address: String::from("175"),
 //                agent_policy_verkey: String::from("F5xT9jRfsbm3GQLcLB1SCP539debmD9mN95VoYjYF4HX"),
                 recovery_verkey: String::from("CXEbaQLPZoiLr17tKd6KkHcGjhzk8dUr4JEx82fdvN8Z"),
@@ -58,15 +58,15 @@ pub fn config_info(actor: &Actor) -> ConfigInfo {
         },
         &Actor::Bob => {
             ConfigInfo {
-                agent_endpoint: String::from("https://dkmscas.pdev.evernym.com"),
-                agency_pairwise_did: String::from("YTpNMUPavSFvTXYJHSZgsh"),
-                agency_pairwise_verkey: String::from("J9b45WK4tW56kSV2SC1UN5DKkZdMHAejv8eVoNuaXMkX"),
-                enterprise_did_agent: String::from("Q7TnRDsM4n1hxVZtGCWkFq"),
-                agent_enterprise_verkey: String::from("Dbbe5jPiG2PBfRnMYwBGtw66wJK79F5HgiMewaheGDcD"),
+                agent_endpoint: String::from("https://dkmseas.pdev.evernym.com"),
+                agency_pairwise_did: String::from("WUxzBH67yC4qnYWwby2HTW"),
+                agency_pairwise_verkey: String::from("H4zNegfgTgBXfsSGLYhcKzxPQ2BsTBvUGi8wnv2xZNGZ"),
+                enterprise_did_agent: String::from("SFwkCRCF4Wjxo5WREk71nZ"),
+                agent_enterprise_verkey: String::from("EmSmJfcgnGgFW8WMcwzYXP3LMsf5R7hdW8iXFFL9cjK7"),
                 enterprise_did: String::from("Yc3LubuuUnnCYbP1zr5nJq"),
                 enterprise_verkey: String::from("JE52CbRqNw8FqhuYP1S1xhbNQVAGUkQjUsGX9txhaZjz"),
-                agent_pairwise_did: String::from("BVVL7GXKTb4ERLjN75HEUb"),
-                agent_pairwise_verkey: String::from("6ieX7JjNMABTzgDjC74ZN6SZmYMpfwDZVGaAjzWgbm9D"),
+                agent_pairwise_did: String::from("9DmYSMjiomSPiEsjvEbmjr"),
+                agent_pairwise_verkey: String::from("5UraNJ1EUgkrCr1WMAJNBqL88f8533sDfQgSmAFpZqeS"),
                 identity_policy_address: String::new(),
 //                agent_policy_verkey: String::from("7AkE14sGDknmzxZC63BDSkm9HmCou1Nwx5aPgh2iEeFP"),
                 recovery_verkey: String::from("At8x8WDMCrmJbxD1KWo7S51L87vFBehAfvnfMpfGcaQg"),
@@ -74,15 +74,15 @@ pub fn config_info(actor: &Actor) -> ConfigInfo {
         },
         &Actor::CUnion => {
             ConfigInfo {
-                agent_endpoint: String::from("https://dkmscas.pdev.evernym.com"),
-                agency_pairwise_did: String::from("YTpNMUPavSFvTXYJHSZgsh"),
-                agency_pairwise_verkey: String::from("J9b45WK4tW56kSV2SC1UN5DKkZdMHAejv8eVoNuaXMkX"),
-                enterprise_did_agent: String::from("DjL3Sx9YzfnFF2z16Zhkv3"),
-                agent_enterprise_verkey: String::from("7wR1nWTbbLieBbrGyYNSkxNMorF2usb28Pn99g2Krxxa"),
+                agent_endpoint: String::from("https://dkmseas.pdev.evernym.com"),
+                agency_pairwise_did: String::from("WUxzBH67yC4qnYWwby2HTW"),
+                agency_pairwise_verkey: String::from("H4zNegfgTgBXfsSGLYhcKzxPQ2BsTBvUGi8wnv2xZNGZ"),
+                enterprise_did_agent: String::from("8kYL6mMLEDVwqPnFSDdj5"),
+                agent_enterprise_verkey: String::from("5E1rLi24tpcSKL1CLKwyt8jMicwcdTLGP81LaBdqvwy"),
                 enterprise_did: String::from("Pd4fnFtRBcMKRVC2go5w3j"),
                 enterprise_verkey: String::from("DL7uYjX8tAmGWX1uwKBuG8wWPswUx9TtcPtkMANu2nXz"),
-                agent_pairwise_did: String::from("FdcLsU6V28VKGryA8rJGmu"),
-                agent_pairwise_verkey: String::from("8yXDT5MGbK4az4AV9axeonfR8SCnmpJjueExLybggEij"),
+                agent_pairwise_did: String::from("QntNiS2MrCXc8UncTtD94A"),
+                agent_pairwise_verkey: String::from("Dy5ujyqU3m5rg8GVSEbmsDFKa7iP8tE5Cgce6sU7QejQ"),
                 identity_policy_address: String::new(),
 //                agent_policy_verkey: String::from("C5CZ2AQLdNQPFJAWLnGWJ85BWCVCGdiGp1GCrNtHStoX"),
                 recovery_verkey: String::from("EEu1sdgWR55xsXbVoiJ8zi4v8LPbBLqpDSyAZUHUYQox"),
@@ -90,15 +90,15 @@ pub fn config_info(actor: &Actor) -> ConfigInfo {
         },
         &Actor::Dakota => {
             ConfigInfo {
-                agent_endpoint: String::from("https://dkmscas.pdev.evernym.com"),
-                agency_pairwise_did: String::from("YTpNMUPavSFvTXYJHSZgsh"),
-                agency_pairwise_verkey: String::from("J9b45WK4tW56kSV2SC1UN5DKkZdMHAejv8eVoNuaXMkX"),
-                enterprise_did_agent: String::from("V5QePcnAZbFUNvSPAqi48Y"),
-                agent_enterprise_verkey: String::from("GJYBEwWFh8P5EAKbWPt3NDKaYdbFo8Bn65229fDRtByk"),
+                agent_endpoint: String::from("https://dkmseas.pdev.evernym.com"),
+                agency_pairwise_did: String::from("WUxzBH67yC4qnYWwby2HTW"),
+                agency_pairwise_verkey: String::from("H4zNegfgTgBXfsSGLYhcKzxPQ2BsTBvUGi8wnv2xZNGZ"),
+                enterprise_did_agent: String::from("9c8MSUUmbP6HndnMiyvaZx"),
+                agent_enterprise_verkey: String::from("5h3P6nVdNJFQ6K9YT6vJBwrnGDDhpHuozDn7yq4EFBtz"),
                 enterprise_did: String::from("6ZHaGDPkawG6ms42jEc3go"),
                 enterprise_verkey: String::from("42f66hVgsdpLHQAW5TYuQJiTqMmnDmvQcCS5WkCk7En2"),
-                agent_pairwise_did: String::from("RhgVgkU2hVWfPHdTsLC5q8"),
-                agent_pairwise_verkey: String::from("ETrsQ21KNvM8QqyKnbJhemyJvq7huguNquGeD124hxCr"),
+                agent_pairwise_did: String::from("Qd54dNVZiejzx9LCqCFkbU"),
+                agent_pairwise_verkey: String::from("DsjcfvjNZyByTnfkDhvNW3KAWgeHg4Nzfo42EoHWYrUR"),
                 identity_policy_address: String::new(),
 //                agent_policy_verkey: String::from("EgENwWrTW5zjSkSFWqg8orK3kzwiESLmQTDY6Dt9Tajp"),
                 recovery_verkey: String::from("Ageo5PwVFdaQjSszNT9hsfPA4szCFq4sT378mfUnaNtL"),
@@ -106,15 +106,15 @@ pub fn config_info(actor: &Actor) -> ConfigInfo {
         },
         &Actor::AliceNew => {
             ConfigInfo {
-                agent_endpoint: String::from("https://dkmscas.pdev.evernym.com"),
-                agency_pairwise_did: String::from("YTpNMUPavSFvTXYJHSZgsh"),
-                agency_pairwise_verkey: String::from("J9b45WK4tW56kSV2SC1UN5DKkZdMHAejv8eVoNuaXMkX"),
-                enterprise_did_agent: String::from("JuJdkXUukd5wvGujXgCh2P"),
-                agent_enterprise_verkey: String::from("AkuqZRrBTQLUVKkTKcGYtkFbypNDBWmLKEc1mrK3ZKSf"),
+                agent_endpoint: String::from("https://dkmseas.pdev.evernym.com"),
+                agency_pairwise_did: String::from("WUxzBH67yC4qnYWwby2HTW"),
+                agency_pairwise_verkey: String::from("H4zNegfgTgBXfsSGLYhcKzxPQ2BsTBvUGi8wnv2xZNGZ"),
+                enterprise_did_agent: String::from("MtBEzsp3nHc7Fu8LThEbsB"),
+                agent_enterprise_verkey: String::from("CP8gPvi4m7ho2Bwe4DzZ6LGBTMiG4JALpNSpHwJwM1cU"),
                 enterprise_did: String::from("XZQU4ASGLWJpYowW44Lrvf"),
                 enterprise_verkey: String::from("Hf2Cnwz9wD9S4Ma6pWQrDMprVcWipoG2XtZBbbVEMFf1"),
-                agent_pairwise_did: String::from("9jUpkVPHNnjH2W8PKKs3dQ"),
-                agent_pairwise_verkey: String::from("5m3pgiWkHFnTnTvNtVpQjfTQ6SpDrJVkaN8XUUjfVYVg"),
+                agent_pairwise_did: String::from("KDpR2NLR7EhryeBkvRDVq8"),
+                agent_pairwise_verkey: String::from("Aw15t2gXXKbU2pS8FLgnijmtU4Y9VFjPpJbs8BCtSfGQ"),
                 identity_policy_address: String::new(),
 //                agent_policy_verkey: String::from("EdVjJ7Ym9DU7mcgUQRoBEDZJHf1FPmmuw5MZZt2aAFEJ"),
                 recovery_verkey: String::from("3kQC49LLPApgeSBRoHrX4JgW9rvDiihYAZsyHWRpzP4n"),
@@ -128,14 +128,14 @@ pub fn wallet_entries(actor: &Actor) -> &[[&str;3]] {
         &Actor::Alice => {
             &[
                 [
-                    "my_did::4A2GxCWKfxqUFEC8ozixJq",
-                    r#"{"did":"4A2GxCWKfxqUFEC8ozixJq","verkey":"2ikgmgutu3DLHfoofp6ibLfe9fZqjMvDo36hnoWXT5oZ"}"#,
-                    "2018-02-22 16:00:33"
+                    "my_did::6XhshVzmi49QVhJwAHYxeU",
+                    r#"{"did":"6XhshVzmi49QVhJwAHYxeU","verkey":"41o7JQSv6WnU5hm3wb5dXitfSDbqoXHMQQCc9rEyebyF"}"#,
+                    "2018-03-22 21:39:50"
                 ],
                 [
-                    "key::2ikgmgutu3DLHfoofp6ibLfe9fZqjMvDo36hnoWXT5oZ",
-                    r#"{"verkey":"2ikgmgutu3DLHfoofp6ibLfe9fZqjMvDo36hnoWXT5oZ","signkey":"3HYnQ1zzQAWi7dVX3CFG1pQeajtw4agZ4iv47VsaMrb7KDo7cVFDa9aBuJubcRUXmjbCoVyJW6RgLFQoBrLQFBJj"}"#,
-                    "2018-02-22 16:00:33"
+                    "key::41o7JQSv6WnU5hm3wb5dXitfSDbqoXHMQQCc9rEyebyF",
+                    r#"{"verkey":"41o7JQSv6WnU5hm3wb5dXitfSDbqoXHMQQCc9rEyebyF","signkey":"5amaRY5ue3ZJRTvEu6KB8QrZJF36quEcxxAAeQHoTbMTJ8fTLSsqL4nnS12SseajfyEaWccwCcRqfVjxUNiyB9f3"}"#,
+                    "2018-03-22 21:39:50"
                 ],
                 [
                     "my_did::RiPVER16apmvuRmUkoQphz",
@@ -177,14 +177,14 @@ pub fn wallet_entries(actor: &Actor) -> &[[&str;3]] {
         &Actor::Bob => {
             &[
                 [
-                    "my_did::Q7TnRDsM4n1hxVZtGCWkFq",
-                    r#"{"did":"Q7TnRDsM4n1hxVZtGCWkFq","verkey":"Dbbe5jPiG2PBfRnMYwBGtw66wJK79F5HgiMewaheGDcD"}"#,
-                    "2018-02-21 18:31:17"
+                    "my_did::SFwkCRCF4Wjxo5WREk71nZ",
+                    r#"{"did":"SFwkCRCF4Wjxo5WREk71nZ","verkey":"EmSmJfcgnGgFW8WMcwzYXP3LMsf5R7hdW8iXFFL9cjK7"}"#,
+                    "2018-03-22 21:45:16"
                 ],
                 [
-                    "key::Dbbe5jPiG2PBfRnMYwBGtw66wJK79F5HgiMewaheGDcD",
-                    r#"{"verkey":"Dbbe5jPiG2PBfRnMYwBGtw66wJK79F5HgiMewaheGDcD","signkey":"2RmeMDv8vmrCKs4mEetX7MonR3cfDYSCcQJnu1SD9CWoNSF6DSvnWWn5sbxvbL7ABrwJFHq3XfFYUFjzaJbYKSru"}"#,
-                    "2018-02-21 18:31:17"
+                    "key::EmSmJfcgnGgFW8WMcwzYXP3LMsf5R7hdW8iXFFL9cjK7",
+                    r#"{"verkey":"EmSmJfcgnGgFW8WMcwzYXP3LMsf5R7hdW8iXFFL9cjK7","signkey":"43XsrQkMmpEfCt4ro8Jm55j8vnT4wpRtGaABV3GKzxpsjpuk8uLreiu1BJ8VPk7U5QhaNy85T86Hx7CTk2DAETNR"}"#,
+                    "2018-03-22 21:45:16"
                 ],
                 [
                     "my_did::Yc3LubuuUnnCYbP1zr5nJq",
@@ -211,14 +211,14 @@ pub fn wallet_entries(actor: &Actor) -> &[[&str;3]] {
         &Actor::CUnion => {
             &[
                 [
-                    "my_did::DjL3Sx9YzfnFF2z16Zhkv3",
-                    r#"{"did":"DjL3Sx9YzfnFF2z16Zhkv3","verkey":"7wR1nWTbbLieBbrGyYNSkxNMorF2usb28Pn99g2Krxxa"}"#,
-                    "2018-02-21 18:39:26"
+                    "my_did::8kYL6mMLEDVwqPnFSDdj5",
+                    r#"{"did":"8kYL6mMLEDVwqPnFSDdj5","verkey":"5E1rLi24tpcSKL1CLKwyt8jMicwcdTLGP81LaBdqvwy"}"#,
+                    "2018-03-22 21:48:08"
                 ],
                 [
-                    "key::7wR1nWTbbLieBbrGyYNSkxNMorF2usb28Pn99g2Krxxa",
-                    r#"{"verkey":"7wR1nWTbbLieBbrGyYNSkxNMorF2usb28Pn99g2Krxxa","signkey":"427PUJkmSGDbWXAUqmWynKpK6oKTvcSnaPMPyUQNY1iPjMp3y2JhKWVToNH8HcrwmXQjhcZf8ShaWKPrLxH3ccHQ"}"#,
-                    "2018-02-21 18:39:26"
+                    "key::5E1rLi24tpcSKL1CLKwyt8jMicwcdTLGP81LaBdqvwy",
+                    r#"{"verkey":"5E1rLi24tpcSKL1CLKwyt8jMicwcdTLGP81LaBdqvwy","signkey":"5EUbrFTz5k91ynS9rLLVX3But67Rh1YAyrxRSj5y6CX68tqHQXdxreVCumehCyREKB8mbMvXTh1JNkzvATRS2kT1"}"#,
+                    "2018-03-22 21:48:08"
                 ],
                 [
                     "my_did::Pd4fnFtRBcMKRVC2go5w3j",
@@ -256,14 +256,14 @@ pub fn wallet_entries(actor: &Actor) -> &[[&str;3]] {
         &Actor::Dakota => {
             &[
                 [
-                    "my_did::V5QePcnAZbFUNvSPAqi48Y",
-                    r#"{"did":"V5QePcnAZbFUNvSPAqi48Y","verkey":"GJYBEwWFh8P5EAKbWPt3NDKaYdbFo8Bn65229fDRtByk"}"#,
-                    "2018-03-01 21:56:12"
+                    "my_did::9c8MSUUmbP6HndnMiyvaZx",
+                    r#"{"did":"9c8MSUUmbP6HndnMiyvaZx","verkey":"5h3P6nVdNJFQ6K9YT6vJBwrnGDDhpHuozDn7yq4EFBtz"}"#,
+                    "2018-03-22 21:53:11"
                 ],
                 [
-                    "key::GJYBEwWFh8P5EAKbWPt3NDKaYdbFo8Bn65229fDRtByk",
-                    r#"{"verkey":"GJYBEwWFh8P5EAKbWPt3NDKaYdbFo8Bn65229fDRtByk","signkey":"5vPXp5TbQy6tTjDSwBLNeATxePzVfZAKtkhRG9djdcupb3p44quYxiwpwAgmVDb4vr4X88nKiNeVebkEzUkoUhDk"}"#,
-                    "2018-03-01 21:56:12"
+                    "key::5h3P6nVdNJFQ6K9YT6vJBwrnGDDhpHuozDn7yq4EFBtz",
+                    r#"{"verkey":"5h3P6nVdNJFQ6K9YT6vJBwrnGDDhpHuozDn7yq4EFBtz","signkey":"5ioxyvNCPkRsopB1X6HhKjFivNYiujL5upw18sioEGa24aRayo9fvVrhzewaNQdUggM4RVjVh4VLUGnjpZ5TEVx2"}"#,
+                    "2018-03-22 21:53:11"
                 ],
                 [
                     "my_did::6ZHaGDPkawG6ms42jEc3go",
@@ -290,14 +290,14 @@ pub fn wallet_entries(actor: &Actor) -> &[[&str;3]] {
         &Actor::AliceNew => {
             &[
                 [
-                    "my_did::JuJdkXUukd5wvGujXgCh2P",
-                    r#"{"did":"JuJdkXUukd5wvGujXgCh2P","verkey":"AkuqZRrBTQLUVKkTKcGYtkFbypNDBWmLKEc1mrK3ZKSf"}"#,
-                    "2018-03-01 21:56:12"
+                    "my_did::MtBEzsp3nHc7Fu8LThEbsB",
+                    r#"{"did":"MtBEzsp3nHc7Fu8LThEbsB","verkey":"CP8gPvi4m7ho2Bwe4DzZ6LGBTMiG4JALpNSpHwJwM1cU"}"#,
+                    "2018-03-22 21:55:26"
                 ],
                 [
-                    "key::AkuqZRrBTQLUVKkTKcGYtkFbypNDBWmLKEc1mrK3ZKSf",
-                    r#"{"verkey":"AkuqZRrBTQLUVKkTKcGYtkFbypNDBWmLKEc1mrK3ZKSf","signkey":"5PhmtW6JkQnjVJFefQQHeGFAGD5KzR4etfksn2rwTGHzvgvy1zJPVAqXU3uMNnC1124Uftm6GLojWFifUUUXfhQs"}"#,
-                    "2018-03-01 21:56:12"
+                    "key::CP8gPvi4m7ho2Bwe4DzZ6LGBTMiG4JALpNSpHwJwM1cU",
+                    r#"{"verkey":"CP8gPvi4m7ho2Bwe4DzZ6LGBTMiG4JALpNSpHwJwM1cU","signkey":"4VTyxmxtHCcJwaMWGASadzowaTQTo2E2cm6B5RDsFRFroB6dBAbDomVfZVYP5MtE8Ho1kKhMoR5FUhs9v9xSLDRa"}"#,
+                    "2018-03-22 21:55:26"
                 ],
                 [
                     "my_did::XZQU4ASGLWJpYowW44Lrvf",

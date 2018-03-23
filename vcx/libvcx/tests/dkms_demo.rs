@@ -32,8 +32,12 @@ use dkms::constants::{DEV_GENESIS_NODE_TXNS,
                       wallet_entries,
                       asset_name,
                       ACCOUNT_CERT_SCHEMA_SEQ_NUM,
-                      ACCOUNT_CERT_DID};
-use dkms::constants;
+                      ACCOUNT_CERT_DID,
+                      B_CARD_SCHEMA_SEQ_NUM,
+                      V_TITLE_DID,
+                      V_TITLE_SCHEMA_SEQ_NUM,
+                      DAKOTAS_VIN};
+
 use dkms::actor::Actor;
 use dkms::util::{print_chapter,
                  find_actor,
@@ -135,7 +139,7 @@ fn await_message(conn_handle: u32, msg_type: &str, func: api_caller::fn_u32_r_u3
 //        println!("{}", msg);
 
         if msg.contains(msg_type) {
-            println!("received message of type: {}", msg_type);
+//            println!("received message of type: {}", msg_type);
             return Ok(msg);
         }
 
@@ -162,7 +166,7 @@ fn send_conn(other_party: &str, path: &Path) -> Result<u32, u32> {
 //    println!("Connection Details: \n");
 //    pr_json(&invite);
 
-    let gate_msg = format!("Send Connection Invite to {}[Yes]:", other_party);
+    let gate_msg = format!("Send Connection Invite to {}? [Yes]:", other_party);
     gate(Some(gate_msg.as_str()), USE_GATES);
 
     println!("Sending invite via file at {:?}", path);
@@ -192,7 +196,7 @@ fn receive_conn(other_party: &str, path: &Path) -> Result<u32, u32> {
 
     println!("Connection handle: {}", handle);
 
-    let gate_msg = format!("Accept Connection Invite from {}[Yes]:", other_party);
+    let gate_msg = format!("Accept Connection Invite from {}? [Yes]:", other_party);
     gate(Some(gate_msg.as_str()), USE_GATES);
 
     println!("Connecting to connection with {}", other_party);
@@ -225,13 +229,14 @@ fn chapter_1_demo(actor: &Actor) {
     match actor {
         &Actor::Alice => {
             print_chapter("CHAPTER ONE", None);
-            gate(None, USE_GATES);
             println!("ENTER ALICE");
+            gate(None, USE_GATES);
+
             let invite_path = Path::new(INVITE_CUNION_ALICE_PATH);
             let cunion_h = receive_conn("CUNION", invite_path).expect("Should connect to CUNION");
 
 
-            println!("Look for claim offer");
+            println!("Alice looks for claim offers from CUnion");
             let offers = await_message(cunion_h,
                                        "CLAIM_OFFER",
                                        vcx::api::claim::vcx_claim_new_offers,
@@ -239,23 +244,25 @@ fn chapter_1_demo(actor: &Actor) {
 
 
 
-            println!("Offers:\n{}", offers);
+            println!("Recieved ffers:\n{}", offers);
 
             let offers: Value = serde_json::from_str(&offers).unwrap();
 
             let account_cert_offer = &offers[0];
+            let account_cert_offer = serde_json::to_string(account_cert_offer).unwrap();
 
             let claim_h = api_caller::str_str_r_u32("bank account",
-                                                    &serde_json::to_string(account_cert_offer).unwrap(),
+                                                    &account_cert_offer,
                                                     vcx::api::claim::vcx_claim_create_with_offer).unwrap();
+            println!("Claim handle: {}", claim_h);
+
+            gate(Some("Accept Claim from CUnion? [Yes]:"), USE_GATES);
 
             api_caller::u32_u32_r_u32(claim_h,
                                       cunion_h,
                                       vcx::api::claim::vcx_claim_send_request).unwrap();
 
-
-
-            println!("Look for claim");
+            println!("Waiting for claim from CUnion");
             await_state("Claim",
                         claim_h,
                         4, //VcxStateAccepted
@@ -263,23 +270,26 @@ fn chapter_1_demo(actor: &Actor) {
                         None).unwrap();
 
             println!("Time passes and Alice calls again and must be authenticated.");
-            println!("Look for auth trust ping");
+            println!("Alice Looks for DID auth request");
             let pings = await_message(cunion_h,
                                        "TRUST_PING",
                                        vcx::api::trust_pong::vcx_trust_pong_new_pings,
                                        None).unwrap();
 
-            println!("Ping:\n{}", pings);
+            println!("Did Auth requests:\n{}", pings);
 
             let pings: Value = serde_json::from_str(&pings).unwrap();
 
             let ping = &pings[0];
+            let ping = serde_json::to_string(ping).unwrap();
 
             let pong_h = api_caller::str_str_r_u32("auth req from cunion",
-                                                    &serde_json::to_string(ping).unwrap(),
+                                                    &ping,
                                                     vcx::api::trust_pong::vcx_trust_pong_create_with_request).unwrap();
 
-            println!("Pong Handle: {}", pong_h);
+            println!("DID Auth Handle: {}", pong_h);
+
+            gate(Some("Reply to DID Auth request from CUnion? [Yes]:"), USE_GATES);
 
             api_caller::u32_u32_r_u32(pong_h,
                                       cunion_h,
@@ -291,23 +301,28 @@ fn chapter_1_demo(actor: &Actor) {
                         vcx::api::trust_pong::vcx_trust_pong_update_state,
                         None).unwrap();
 
-            println!("Pong was send!");
+            println!("DID auth challange met!");
 
             db_put("cunion_for_alice_h", format!("{}", cunion_h)).unwrap();
 
         },
         &Actor::CUnion => {
             print_chapter("CHAPTER ONE", None);
-            gate(None, USE_GATES);
             println!("ENTER CUnion");
+            gate(None, USE_GATES);
+
             let invite_path = Path::new(INVITE_CUNION_ALICE_PATH);
             let alice_h = send_conn("Alice", invite_path).expect("Should connect to CUNION");
 
+            let claim_data = r#"{"name_on_account":["Alice"], "account_num":["8BEaoLf8TBmK4BUyX8WWnA"]}"#;
+
+            println!("Sending Account Certificate offer to Alice:");
+            pr_json(claim_data);
 
             let claim_h = api_caller::str_u32_str_str_str_r_u32("alice_account",
                                                                 ACCOUNT_CERT_SCHEMA_SEQ_NUM,
                                                                 ACCOUNT_CERT_DID,
-                                                                r#"{"name_on_account":["Alice"], "account_num":["8BEaoLf8TBmK4BUyX8WWnA"]}"#,
+                                                                claim_data,
                                                                 "Account Certificate",
                                                                 vcx::api::issuer_claim::vcx_issuer_create_claim).unwrap();
 
@@ -321,6 +336,9 @@ fn chapter_1_demo(actor: &Actor) {
                         vcx::api::issuer_claim::vcx_issuer_claim_update_state,
                         None).unwrap();
 
+            println!("Alice has replyed to Claim Request");
+
+            gate(Some("Send signed claim to Alice? [Yes]:"), USE_GATES);
             api_caller::u32_u32_r_u32(claim_h,
                                       alice_h,
                                       vcx::api::issuer_claim::vcx_issuer_send_claim).unwrap();
@@ -331,7 +349,13 @@ fn chapter_1_demo(actor: &Actor) {
                         vcx::api::issuer_claim::vcx_issuer_claim_update_state,
                         None).unwrap();
 
+            println!("Claim issuance is complete!");
+            println!();
+
+
             println!("TIME PASSES AND Alice calls again and must be authenticated.");
+
+            gate(Some("Send DID Auth request to Alice? [Yes]:"), USE_GATES);
 
             let auth_h = api_caller::str_r_u32("auth_for_alice",
                                        vcx::api::trust_ping::vcx_trust_ping_create
@@ -362,18 +386,21 @@ fn chapter_2_demo(actor: &Actor) {
         &Actor::Alice => {
             print_chapter("CHAPTER TWO", None);
             println!("ENTER ALICE");
+            gate(None, USE_GATES);
+
             let invite_path = Path::new(INVITE_BOB_ALICE_PATH);
             let bob_h = send_conn("Bob", invite_path).expect("Should connect to Bob");
             println!("Connection handle: {}", bob_h);
 
 
-            println!("Look for proof requests");
+            println!("Alice agrees to provide business card info to Bob");
+            println!("Alice Looks for proof requests from Bob");
             let req = await_message(bob_h,
                                        "PROOF_REQUEST",
                                        vcx::api::disclosed_proof::vcx_disclosed_proof_new_requests,
                                        None).unwrap();
 
-            println!("Requests:\n{}", req);
+            println!("Proof requests:\n{}", req);
 
             let req: Value = serde_json::from_str(&req).unwrap();
 
@@ -385,6 +412,8 @@ fn chapter_2_demo(actor: &Actor) {
 
             println!("Proof Handle: {}", proof_h);
 
+
+            gate(Some("Send business card proof to Bob? [Yes]:"), USE_GATES);
             api_caller::u32_u32_r_u32(proof_h,
                                       bob_h,
                                       vcx::api::disclosed_proof::vcx_disclosed_proof_send_proof).unwrap();
@@ -395,12 +424,16 @@ fn chapter_2_demo(actor: &Actor) {
                         vcx::api::disclosed_proof::vcx_disclosed_proof_update_state,
                         None).unwrap();
 
+            println!("Proof sucessfully send!");
+
             db_put("bob_for_alice_h", format!("{}", bob_h)).unwrap();
 
         },
         &Actor::Bob => {
             print_chapter("CHAPTER TWO", None);
             println!("ENTER BOB");
+            gate(None, USE_GATES);
+
             let invite_path = Path::new(INVITE_BOB_ALICE_PATH);
             let alice_h = receive_conn("Alice", invite_path).expect("Should connect to Alice");
 
@@ -408,22 +441,21 @@ fn chapter_2_demo(actor: &Actor) {
                 {
                   "name":"name",
 
-                  "schema_seq_no": constants::B_CARD_SCHEMA_SEQ_NUM
+                  "schema_seq_no": B_CARD_SCHEMA_SEQ_NUM
                 },
                 {
                   "name":"email",
 
-                  "schema_seq_no": constants::B_CARD_SCHEMA_SEQ_NUM
+                  "schema_seq_no": B_CARD_SCHEMA_SEQ_NUM
                 },
                 {
                   "name":"business",
 
-                  "schema_seq_no": constants::B_CARD_SCHEMA_SEQ_NUM
+                  "schema_seq_no": B_CARD_SCHEMA_SEQ_NUM
                 },
             ]);
             let requesting_proof = serde_json::to_string_pretty(&requesting_proof).unwrap();
-            println!("Requesting Proof:\n{}", requesting_proof);
-
+            println!("Request for business card proof:\n{}", requesting_proof);
 
             let proof_h = api_caller::str_str_str_str_r_u32("proof_of_alice",
                                                             &requesting_proof,
@@ -432,7 +464,7 @@ fn chapter_2_demo(actor: &Actor) {
                                                                 vcx::api::proof::vcx_proof_create).unwrap();
             println!("Proof Handle: {}", proof_h);
 
-
+            gate(Some("Send request for business card proof to Alice? [Yes]:"), USE_GATES);
             api_caller::u32_u32_r_u32(proof_h,
                                       alice_h,
                                       vcx::api::proof::vcx_proof_send_request).unwrap();
@@ -449,6 +481,10 @@ fn chapter_2_demo(actor: &Actor) {
 
             assert_eq!(1, proof_state);
 
+            pr_json(&_attrs.expect("Expect proof attrs"));
+
+            println!("Bob has recieved proof from Alice!");
+
             db_put("alice_for_bob_h", format!("{}", alice_h)).unwrap();
 
         },
@@ -461,16 +497,19 @@ fn chapter_3_demo(actor: &Actor) {
         &Actor::Alice => {
             print_chapter("CHAPTER THREE", None);
             println!("ENTER ALICE");
-            let invite_path = Path::new(INVITE_ALICE_DAKOTA_PATH);
-            let bob_h = receive_conn("Bob", invite_path).expect("Should connect to Dakota");
+            gate(None, USE_GATES);
 
-            println!("Look for proof requests");
-            let req = await_message(bob_h,
+            let invite_path = Path::new(INVITE_ALICE_DAKOTA_PATH);
+            let dakota_h = receive_conn("Dakota", invite_path).expect("Should connect to Dakota");
+
+            println!("Alice wants to prove to her car that she owns it.");
+            println!("Alice Looks for proof requests from Dakota");
+            let req = await_message(dakota_h,
                                     "PROOF_REQUEST",
                                     vcx::api::disclosed_proof::vcx_disclosed_proof_new_requests,
                                     None).unwrap();
 
-            println!("Requests:\n{}", req);
+            println!("Proof Requests:\n{}", req);
 
             let req: Value = serde_json::from_str(&req).unwrap();
 
@@ -482,8 +521,9 @@ fn chapter_3_demo(actor: &Actor) {
 
             println!("Proof Handle: {}", proof_h);
 
+            gate(Some("Send Auto Title proof to Dakota? [Yes]:"), USE_GATES);
             api_caller::u32_u32_r_u32(proof_h,
-                                      bob_h,
+                                      dakota_h,
                                       vcx::api::disclosed_proof::vcx_disclosed_proof_send_proof).unwrap();
 
             await_state("Proof",
@@ -492,18 +532,22 @@ fn chapter_3_demo(actor: &Actor) {
                         vcx::api::disclosed_proof::vcx_disclosed_proof_update_state,
                         None).unwrap();
 
+            println!("Proof sucessfully send!");
         },
         &Actor::Dakota => {
             print_chapter("CHAPTER THREE", None);
             println!("ENTER DAKOTA");
+            gate(None, USE_GATES);
+
             let invite_path = Path::new(INVITE_ALICE_DAKOTA_PATH);
             let alice_h = send_conn("Alice", invite_path).expect("Should connect to Alice");
 
+            println!("Alice wants to unlock me but Dakota wants proof frist.");
             let requesting_proof = json!([
                 {
                   "name":"vin",
-                  "issuer_did": constants::V_TITLE_DID,
-                  "schema_seq_no": constants::V_TITLE_SCHEMA_SEQ_NUM,
+                  "issuer_did": V_TITLE_DID,
+                  "schema_seq_no": V_TITLE_SCHEMA_SEQ_NUM,
                 },
             ]);
             let requesting_proof = serde_json::to_string_pretty(&requesting_proof).unwrap();
@@ -513,11 +557,11 @@ fn chapter_3_demo(actor: &Actor) {
             let proof_h = api_caller::str_str_str_str_r_u32("proof_of_title",
                                                             &requesting_proof,
                                                             r#"[]"#,
-                                                            "Account Certificate",
+                                                            "Auto Title",
                                                             vcx::api::proof::vcx_proof_create).unwrap();
             println!("Proof Handle: {}", proof_h);
 
-
+            gate(Some("Send request for Auto Title proof to Alice? [Yes]:"), USE_GATES);
             api_caller::u32_u32_r_u32(proof_h,
                                       alice_h,
                                       vcx::api::proof::vcx_proof_send_request).unwrap();
@@ -535,13 +579,90 @@ fn chapter_3_demo(actor: &Actor) {
             assert_eq!(1, proof_state);
             let vin: Value = serde_json::from_str(&attrs.unwrap()).unwrap();
             let vin = vin[0]["value"].as_str().unwrap();
-            assert_eq!(constants::DAKOTAS_VIN, vin);
+            assert_eq!(DAKOTAS_VIN, vin);
 
-            println!("UNLOCK CAR!!!!!!!!!!!!!")
+            println!("VIN in proof matches Dakota's VIN");
+            println!("UNLOCK CAR!")
 
         },
         _ => () //DOES NOT ACT IN THIS CHAPTER
     }
+}
+
+fn _offer_trustee(other_party: &str, c_h: u32, r_h: u32) -> Result<u32, u32> {
+
+    let trustee_h = api_caller::str_r_u32(&format!("{}_trustee", other_party),
+                                          vcx::api::offer_trustee::vcx_offer_trustee_create).unwrap();
+    println!("Trsutee Handle: {}", trustee_h);
+
+    api_caller::u32_u32_r_u32(trustee_h,
+                              c_h,
+                              vcx::api::offer_trustee::vcx_offer_trustee_send_offer).unwrap();
+
+    println!("Sending trustee offer to {}", other_party);
+    await_state("Trustee",
+                trustee_h,
+                3, //VcxStateRequestReceived
+                vcx::api::offer_trustee::vcx_offer_trustee_update_state,
+                None).unwrap();
+    println!("Received trustee accept request from {}", other_party);
+
+    let gate_msg = format!("Send Trustee Data to {}? [Yes]:", other_party);
+    gate(Some(gate_msg.as_str()), USE_GATES);
+    api_caller::u32_u32_u32_r_u32(trustee_h,
+                                  r_h,
+                                  c_h,
+                                  vcx::api::offer_trustee::vcx_offer_trustee_send_data).unwrap();
+
+
+
+    await_state("Trustee",
+                trustee_h,
+                4, //VcxStateAccepted
+                vcx::api::offer_trustee::vcx_offer_trustee_update_state,
+                None).unwrap();
+
+    Ok(trustee_h)
+}
+
+fn _accept_trustee(other_party: &str, c_h: u32) -> Result<u32, u32> {
+    println!("Looking for trustee offers from {}", other_party);
+    let offers = await_message(c_h,
+                               "TRUSTEE_OFFER",
+                               vcx::api::trustee::vcx_trustee_new_offers,
+                               None).unwrap();
+
+
+
+    println!("Offers:\n{}", offers);
+
+    let offers: Value = serde_json::from_str(&offers).unwrap();
+
+    let trustee_offer = &offers[0];
+    let trustee_offer = serde_json::to_string(trustee_offer).unwrap();
+
+    let trustee_h = api_caller::str_str_r_u32("trustee",
+                                              &trustee_offer,
+                                              vcx::api::trustee::vcx_trustee_create_with_offer
+    ).unwrap();
+
+    println!("Trustee handle: {}", trustee_h);
+
+    let gate_msg = format!("Accept Trustee offer from {}? [Yes]:", other_party);
+    gate(Some(gate_msg.as_str()), USE_GATES);
+    api_caller::u32_u32_r_u32(trustee_h,
+                              c_h,
+                              vcx::api::trustee::vcx_trustee_send_request).unwrap();
+
+
+
+    await_state("Trustee Data",
+                trustee_h,
+                4, //VcxStateAccepted
+                vcx::api::trustee::vcx_trustee_update_state,
+                None).unwrap();
+
+    Ok(trustee_h)
 }
 
 fn chapter_4_demo(actor: &Actor, dir_path: &Path) {
@@ -549,72 +670,35 @@ fn chapter_4_demo(actor: &Actor, dir_path: &Path) {
         &Actor::Alice => {
             print_chapter("CHAPTER FOUR", None);
             println!("ENTER ALICE");
+            gate(None, USE_GATES);
+
+            println!("Alice wants to protect her Digital Identity.");
+
+            println!("Alice shards her recovery key into multiple shares.");
+            let recovery_h = api_caller::str_u32_u32_r_u32("recovery_shares",
+                                                           10,
+                                                           2,
+                                                           vcx::api::recovery_shares::vcx_recovery_shares_create
+            ).unwrap();
 
             let bob_h: u32 = db_get("bob_for_alice_h").unwrap().parse().unwrap();
-            println!("Connection handle: {}", bob_h);
+//            println!("Connection handle: {}", bob_h);
 
-            println!("Offer Trustee to Bob");
-
-
-            let recovery_h = api_caller::str_u32_u32_r_u32("bob_trustee",
-                                                   10,
-                                                   2,
-                                                   vcx::api::recovery_shares::vcx_recovery_shares_create).unwrap();
-
-            let trustee_h = api_caller::str_r_u32("bob_trustee",
-                                                   vcx::api::offer_trustee::vcx_offer_trustee_create).unwrap();
-
-            api_caller::u32_u32_r_u32(trustee_h,
-                                      bob_h,
-                                      vcx::api::offer_trustee::vcx_offer_trustee_send_offer).unwrap();
-
-            await_state("Trustee",
-                        trustee_h,
-                        3, //VcxStateRequestReceived
-                        vcx::api::offer_trustee::vcx_offer_trustee_update_state,
-                        None).unwrap();
-
-            api_caller::u32_u32_u32_r_u32(trustee_h,
-                                          recovery_h,
-                                          bob_h,
-                                          vcx::api::offer_trustee::vcx_offer_trustee_send_data).unwrap();
-
-            await_state("Trustee",
-                        trustee_h,
-                        4, //VcxStateAccepted
-                        vcx::api::offer_trustee::vcx_offer_trustee_update_state,
-                        None).unwrap();
+            println!("Alice chooses Bob to be Trustee.");
+            let _trustee_h_bob = _offer_trustee("Bob",
+                                                bob_h,
+                                                recovery_h
+            ).unwrap();
 
 
             let cunion_h: u32 = db_get("cunion_for_alice_h").unwrap().parse().unwrap();
-            println!("Connection handle: {}", cunion_h);
+//            println!("Connection handle: {}", cunion_h);
 
-            println!("Offer Trustee to CUnion");
-
-
-            let trustee_h = api_caller::str_r_u32("cunion_trustee",
-                                                  vcx::api::offer_trustee::vcx_offer_trustee_create).unwrap();
-
-            api_caller::u32_u32_r_u32(trustee_h,
-                                      cunion_h,
-                                      vcx::api::offer_trustee::vcx_offer_trustee_send_offer).unwrap();
-
-            await_state("Trustee",
-                        trustee_h,
-                        3, //VcxStateRequestReceived
-                        vcx::api::offer_trustee::vcx_offer_trustee_update_state,
-                        None).unwrap();
-
-            api_caller::u32_u32_u32_r_u32(trustee_h,
-                                          recovery_h,
-                                          cunion_h,
-                                          vcx::api::offer_trustee::vcx_offer_trustee_send_data).unwrap();
-
-            await_state("Trustee",
-                        trustee_h,
-                        4, //VcxStateAccepted
-                        vcx::api::offer_trustee::vcx_offer_trustee_update_state,
-                        None).unwrap();
+            println!("Alice chooses CUnion to be Trustee.");
+            let _trustee_h_cunion = _offer_trustee("CUnion",
+                                           cunion_h,
+                                           recovery_h
+            ).unwrap();
 
 
             let _offers = api_caller::u32_r_u32_str(bob_h,
@@ -622,99 +706,114 @@ fn chapter_4_demo(actor: &Actor, dir_path: &Path) {
             ).unwrap(); //TESTING FOR A BUG
 
 
-            println!("Alice backs up her wallet");
+            println!("Alice creates an encrypted backup of her identity data (wallet and other data).");
 
             api_caller::str_r_check(&prep_backup_file(actor, dir_path), vcx::api::backup::vcx_backup_do_backup).unwrap();
+
+            println!("Alice digital identity is secure!");
         },
         &Actor::Bob => {
             print_chapter("CHAPTER FOUR", None);
             println!("ENTER BOB");
+            gate(None, USE_GATES);
 
             let alice_h: u32 = db_get("alice_for_bob_h").unwrap().parse().unwrap();
-            println!("Connection handle: {}", alice_h);
+//            println!("Connection handle: {}", alice_h);
 
-
-            println!("Look for trustee offer");
-            let offers = await_message(alice_h,
-                                       "TRUSTEE_OFFER",
-                                       vcx::api::trustee::vcx_trustee_new_offers,
-                                       None).unwrap();
-
-
-
-            println!("Offers:\n{}", offers);
-
-            let offers: Value = serde_json::from_str(&offers).unwrap();
-
-            let trustee_offer = &offers[0];
-
-            let trustee_h = api_caller::str_str_r_u32("trustee",
-                                                    &serde_json::to_string(trustee_offer).unwrap(),
-                                                    vcx::api::trustee::vcx_trustee_create_with_offer).unwrap();
-
-            println!("Trustee handle: {}", trustee_h);
-
-            api_caller::u32_u32_r_u32(trustee_h,
-                                      alice_h,
-                                      vcx::api::trustee::vcx_trustee_send_request).unwrap();
-
-
-
-            println!("Look for Trustee Data");
-            await_state("Trustee",
-                        trustee_h,
-                        4, //VcxStateAccepted
-                        vcx::api::trustee::vcx_trustee_update_state,
-                        None).unwrap();
+            let trustee_h = _accept_trustee("Alice", alice_h).unwrap();
 
             db_put("trustee_handle", format!("{}", trustee_h)).unwrap();
+
+            println!("Bob is now Alice's Trustee!");
 
         },
         &Actor::CUnion => {
             print_chapter("CHAPTER FOUR", None);
             println!("ENTER CUNION");
+            gate(None, USE_GATES);
 
             let alice_h: u32 = db_get("alice_for_cunion_h").unwrap().parse().unwrap();
-            println!("Connection handle: {}", alice_h);
+//            println!("Connection handle: {}", alice_h);
 
-
-            println!("Look for trustee offer");
-            let offers = await_message(alice_h,
-                                       "TRUSTEE_OFFER",
-                                       vcx::api::trustee::vcx_trustee_new_offers,
-                                       None).unwrap();
-
-
-
-            println!("Offers:\n{}", offers);
-
-            let offers: Value = serde_json::from_str(&offers).unwrap();
-
-            let trustee_offer = &offers[0];
-
-            let trustee_h = api_caller::str_str_r_u32("trustee",
-                                                      &serde_json::to_string(trustee_offer).unwrap(),
-                                                      vcx::api::trustee::vcx_trustee_create_with_offer).unwrap();
-
-            println!("Trustee handle: {}", trustee_h);
-
-            api_caller::u32_u32_r_u32(trustee_h,
-                                      alice_h,
-                                      vcx::api::trustee::vcx_trustee_send_request).unwrap();
-
-
-
-            println!("Look for Trustee Data");
-            await_state("Trustee",
-                        trustee_h,
-                        4, //VcxStateAccepted
-                        vcx::api::trustee::vcx_trustee_update_state,
-                        None).unwrap();
+            let trustee_h = _accept_trustee("Alice", alice_h).unwrap();
 
             db_put("trustee_handle", format!("{}", trustee_h)).unwrap();
+
+            println!("CUnion is now Alice's Trustee!");
         },
         _ => () //DOES NOT ACT IN THIS CHAPTER
     }
+}
+
+fn _request_share(other_party: &str, c_h: u32) -> Result<u32, u32> {
+    println!("Requesting Share from {}", other_party);
+
+
+    let share_id = format!("recovery_share_{}", other_party);
+    let share_h = api_caller::str_r_u32(&share_id,
+                                        vcx::api::request_share::vcx_request_share_create
+    ).unwrap();
+
+    println!("Recovery Share Handle: {}", share_h);
+
+    let gate_msg = format!("Send request for share to {}? [Yes]:", other_party);
+    gate(Some(gate_msg.as_str()), USE_GATES);
+    api_caller::u32_u32_r_u32(share_h,
+                              c_h,
+                              vcx::api::request_share::vcx_request_share_send_request
+    ).unwrap();
+
+    await_state("Return Share",
+                share_h,
+                4, //VcxStateAccepted
+                vcx::api::request_share::vcx_request_share_update_state,
+                None).unwrap();
+
+    println!("Share from {} has been returned.", other_party);
+
+    Ok(share_h)
+}
+
+fn _return_share(other_party:&str, c_h: u32, trustee_h: u32) -> Result<u32, u32> {
+    println!("Looking for request to return share from {}", other_party);
+    let req = await_message(c_h,
+                            "REQUEST_SHARE",
+                            vcx::api::return_share::vcx_return_share_new_request,
+                            None
+    ).unwrap();
+
+    println!("Requests:\n{}", req);
+
+    let req: Value = serde_json::from_str(&req).unwrap();
+
+    let req = &req[0];
+    let req = serde_json::to_string(req).unwrap();
+
+    let id = format!("{}_share_returned", other_party);
+    let return_share_h = api_caller::str_str_r_u32(&id,
+                                                   &req,
+                                                   vcx::api::return_share::vcx_return_share_create_with_request
+    ).unwrap();
+
+    println!("Handle: {}", return_share_h);
+
+    let gate_msg = format!("Send share back to {}? [Yes]:", other_party);
+    gate(Some(gate_msg.as_str()), USE_GATES);
+    api_caller::u32_u32_u32_r_u32(return_share_h,
+                                  c_h,
+                                  trustee_h,
+                                  vcx::api::return_share::vcx_return_share_send_share
+    ).unwrap();
+
+    await_state("Share Request",
+                return_share_h,
+                4, //VcxStateAccepted
+                vcx::api::return_share::vcx_return_share_update_state,
+                None).unwrap();
+
+    println!("Share from {} has been returned.", other_party);
+
+    Ok(return_share_h)
 }
 
 fn chapter_5_demo(actor: &Actor, _dir_path: &Path) {
@@ -722,63 +821,36 @@ fn chapter_5_demo(actor: &Actor, _dir_path: &Path) {
         &Actor::AliceNew => {
             print_chapter("CHAPTER FIVE", None);
             println!("ENTER ALICE's New Agent");
+            gate(None, USE_GATES);
 
             println!("Recovery Connection with Bob:");
             let invite_path = Path::new(INVITE_RECOVERY_BOB_ALICE_PATH);
             let recovery_bob_h = receive_conn("Bob", invite_path).expect("Should connect to Bob");
             println!("Connection handle: {}", recovery_bob_h);
 
-            println!("Requesting Share from Bob");
-
-
-            let share_from_bob_h = api_caller::str_r_u32("recovery_share_BOB",
-                                                vcx::api::request_share::vcx_request_share_create).unwrap();
-
-            println!("Recovery Share Handle: {}", share_from_bob_h);
-
-
-            api_caller::u32_u32_r_u32(share_from_bob_h,
-                                      recovery_bob_h,
-                                      vcx::api::request_share::vcx_request_share_send_request).unwrap();
-
-            await_state("Return Share",
-                        share_from_bob_h,
-                        4, //VcxStateAccepted
-                        vcx::api::request_share::vcx_request_share_update_state,
-                        None).unwrap();
+            let share_from_bob_h = _request_share("Bob", recovery_bob_h).unwrap();
 
             println!("Recovery Connection with Cunion:");
             let invite_path = Path::new(INVITE_RECOVERY_CUNION_ALICE_PATH);
             let recovery_cunion_h = receive_conn("CUNION", invite_path).expect("Should connect to CUNION");
             println!("Connection handle: {}", recovery_cunion_h);
 
-            println!("Requesting Share from Cunion");
-
-
-            let share_from_cunion_h = api_caller::str_r_u32("recovery_share_CUNION",
-                                                   vcx::api::request_share::vcx_request_share_create).unwrap();
-
-            println!("Recovery Share Handle: {}", share_from_cunion_h);
-
-
-            api_caller::u32_u32_r_u32(share_from_cunion_h,
-                                      recovery_cunion_h,
-                                      vcx::api::request_share::vcx_request_share_send_request).unwrap();
-
-            await_state("Share Request",share_from_cunion_h,
-                        4, //VcxStateAccepted
-                        vcx::api::request_share::vcx_request_share_update_state,
-                        None).unwrap();
-
+            let share_from_cunion_h = _request_share("CUnion", recovery_cunion_h).unwrap();
 
             let shares_handles = serde_json::to_string(&vec![share_from_bob_h, share_from_cunion_h]).unwrap();
 
+            println!("Alice has her shares back.");
+            println!("Alice can now restore her Agent");
+
             api_caller::str_r_check(&shares_handles,
                                     vcx::api::backup::vcx_backup_do_restore).unwrap();
+
+            println!("Alice has restored here Agent!");
         }
         &Actor::Bob => {
             print_chapter("CHAPTER FIVE", None);
             println!("ENTER BOB");
+            gate(None, USE_GATES);
 
             let trustee_h: u32 = db_get("trustee_handle").unwrap().parse().unwrap();
             println!("Trustee handle: {}", trustee_h);
@@ -792,6 +864,9 @@ fn chapter_5_demo(actor: &Actor, _dir_path: &Path) {
             println!("Bob has the following agent that he can revoke");
             println!("{}", agent_list);
 
+            let gate_msg = format!("Revoke Alice's 'Phone'? [Yes]:");
+            gate(Some(gate_msg.as_str()), USE_GATES);
+
             let agent_verkey: Value = serde_json::from_str(&agent_list).unwrap();
             let agent_verkey = agent_verkey[0]["verkey"].as_str().unwrap();
 
@@ -799,82 +874,52 @@ fn chapter_5_demo(actor: &Actor, _dir_path: &Path) {
                                       agent_verkey,
                                           vcx::api::trustee::vcx_trustee_revoke_device).unwrap();
 
+            println!("While in contact with Alice, Bob creates a recovery connection.");
 
             let invite_path = Path::new(INVITE_RECOVERY_BOB_ALICE_PATH);
             let recovery_alice_h = send_conn("Alice", invite_path).expect("Should connect to Alice");
             println!("Connection handle: {}", recovery_alice_h);
 
 
-            println!("Look for return share requests");
-            let req = await_message(recovery_alice_h,
-                                    "REQUEST_SHARE",
-                                    vcx::api::return_share::vcx_return_share_new_request,
-                                    None).unwrap();
+            let _return_share_h = _return_share("Alice",
+                                               recovery_alice_h,
+                                               trustee_h
+            ).unwrap();
 
-            println!("Requests:\n{}", req);
+            println!("Bob has finished helping Alice recover!");
 
-            let req: Value = serde_json::from_str(&req).unwrap();
-
-            let proof_req = &req[0];
-
-            let return_share_h = api_caller::str_str_r_u32("alice_share_returned",
-                                                    &serde_json::to_string(proof_req).unwrap(),
-                                                    vcx::api::return_share::vcx_return_share_create_with_request).unwrap();
-
-            println!("Proof Handle: {}", return_share_h);
-
-            api_caller::u32_u32_u32_r_u32(return_share_h,
-                                      recovery_alice_h,
-                                      trustee_h,
-                                      vcx::api::return_share::vcx_return_share_send_share).unwrap();
-
-            await_state("Share Request",
-                        return_share_h,
-                        4, //VcxStateAccepted
-                        vcx::api::return_share::vcx_return_share_update_state,
-                        None).unwrap();
         },
         &Actor::CUnion => {
             print_chapter("CHAPTER FIVE", None);
             println!("ENTER CUNION");
+            gate(None, USE_GATES);
 
             let trustee_h: u32 = db_get("trustee_handle").unwrap().parse().unwrap();
             println!("Trustee handle: {}", trustee_h);
+
+
+            println!("Alice visits a CUnion branch, CUnion creates a recovery connection.");
 
             let invite_path = Path::new(INVITE_RECOVERY_CUNION_ALICE_PATH);
             let recovery_alice_h = send_conn("Alice", invite_path).expect("Should connect to Alice");
             println!("Connection handle: {}", recovery_alice_h);
 
 
-            println!("Look for return share requests");
-            let req = await_message(recovery_alice_h,
-                                    "REQUEST_SHARE",
-                                    vcx::api::return_share::vcx_return_share_new_request,
-                                    None).unwrap();
+            let _return_share_h = _return_share("Alice",
+                                                                recovery_alice_h,
+                                                                trustee_h
+            ).unwrap();
 
-            println!("Requests:\n{}", req);
-
-            let req: Value = serde_json::from_str(&req).unwrap();
-
-            let proof_req = &req[0];
-
-            let return_share_h = api_caller::str_str_r_u32("alice_share_returned",
-                                                           &serde_json::to_string(proof_req).unwrap(),
-                                                           vcx::api::return_share::vcx_return_share_create_with_request).unwrap();
-
-            println!("Proof Handle: {}", return_share_h);
-
-            api_caller::u32_u32_u32_r_u32(return_share_h,
-                                      recovery_alice_h,
-                                      trustee_h,
-                                      vcx::api::return_share::vcx_return_share_send_share).unwrap();
-
-            await_state("Share Request",
-                        return_share_h,
-                        4, //VcxStateAccepted
-                        vcx::api::return_share::vcx_return_share_update_state,
-                        None).unwrap();
+            println!("CUnion has finished helping Alice recover!");
         },
+        &Actor::Alice => {
+            print_chapter("CHAPTER FIVE", None);
+            println!("ENTER Fake Alice");
+
+
+            println!("Alice's phone has been stolen!!");
+            println!("This agent is no longer acting on Alice behalf!");
+        }
         _ => () //DOES NOT ACT IN THIS CHAPTER
     }
 }
@@ -1066,12 +1111,13 @@ fn full_demo(actor: &Actor) {
 
         init_actor(actor, dir_path);
         chapter_1_demo(actor);
-//        chapter_2_demo(actor);
-//        chapter_3_demo(actor);
-//        chapter_4_demo(actor, dir_path);
-//        chapter_5_demo(actor, dir_path);
+        chapter_2_demo(actor);
+        chapter_3_demo(actor);
+        chapter_4_demo(actor, dir_path);
+        chapter_5_demo(actor, dir_path);
 
         print_chapter("DONE", None);
+        gate(None, USE_GATES);
     }
     dir.close().unwrap();
 }

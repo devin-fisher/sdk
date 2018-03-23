@@ -255,8 +255,6 @@ pub fn new_ping_messages(connection_handle: u32, match_name: Option<&str>) -> Re
 
             let req = extract_json_payload(&msg_data)?;
 
-            println!("{:?}", req);
-
             let mut req: Value = serde_json::from_str(&req)
                 .or(Err(error::INVALID_JSON.code_num))?;
 
