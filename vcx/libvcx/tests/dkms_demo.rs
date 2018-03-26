@@ -244,7 +244,7 @@ fn chapter_1_demo(actor: &Actor) {
 
 
 
-            println!("Recieved ffers:\n{}", offers);
+            println!("Received offers:\n{}", offers);
 
             let offers: Value = serde_json::from_str(&offers).unwrap();
 
@@ -427,7 +427,7 @@ fn chapter_2_demo(actor: &Actor) {
                         vcx::api::disclosed_proof::vcx_disclosed_proof_update_state,
                         None).unwrap();
 
-            println!("Proof sucessfully send!");
+            println!("Proof successfully sent!");
 
             db_put("bob_for_alice_h", format!("{}", bob_h)).unwrap();
 
@@ -486,7 +486,7 @@ fn chapter_2_demo(actor: &Actor) {
 
             pr_json(&_attrs.expect("Expect proof attrs"));
 
-            println!("Bob has recieved proof from Alice!");
+            println!("Bob has received proof from Alice!");
 
             db_put("alice_for_bob_h", format!("{}", alice_h)).unwrap();
 
@@ -535,7 +535,7 @@ fn chapter_3_demo(actor: &Actor) {
                         vcx::api::disclosed_proof::vcx_disclosed_proof_update_state,
                         None).unwrap();
 
-            println!("Proof sucessfully send!");
+            println!("Proof successfully sent!");
         },
         &Actor::Dakota => {
             print_chapter("CHAPTER THREE", None);
@@ -596,7 +596,7 @@ fn _offer_trustee(other_party: &str, c_h: u32, r_h: u32) -> Result<u32, u32> {
 
     let trustee_h = api_caller::str_r_u32(&format!("{}_trustee", other_party),
                                           vcx::api::offer_trustee::vcx_offer_trustee_create).unwrap();
-    println!("Trsutee Handle: {}", trustee_h);
+    println!("Trustee Handle: {}", trustee_h);
 
     api_caller::u32_u32_r_u32(trustee_h,
                               c_h,
@@ -921,7 +921,7 @@ fn chapter_5_demo(actor: &Actor, _dir_path: &Path) {
 
 
             println!("Alice's phone has been stolen!!");
-            println!("This agent is no longer acting on Alice behalf!");
+            println!("This agent is no longer acting on Alice's behalf!");
         }
         _ => () //DOES NOT ACT IN THIS CHAPTER
     }
@@ -1047,7 +1047,7 @@ fn init_pool() {
 
 fn init_actor(actor: &Actor, dir: &Path) {
     print_chapter("INIT ACTOR", None);
-    println!("Setuping {:?}'s wallet and configuration.", actor);
+    println!("Setting up {:?}'s wallet and configuration.", actor);
     wallet::add_wallet_entries(Some(asset_name(actor).as_str()),
                                Some(POOL_NAME),
                                wallet_entries(actor)
