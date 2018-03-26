@@ -265,6 +265,7 @@ fn _restore_file(verkey: &str, wallet_handle: i32, entry: &ManifestEntry) -> Res
 fn _restore_files(verkey: &str, wallet_handle: i32) -> Result<(), u32> {
     let manifest = _retrieve_manifest(verkey, wallet_handle)?;
 
+    println!("Recovery Entries");
     println!("{}", serde_json::to_string_pretty(&manifest)
         .unwrap());
 
@@ -295,7 +296,9 @@ fn _recover_key(shares_json: &str, wallet_handle: i32) -> Result<String, u32> {
 fn _sss_recovery(shares_json: &str) -> Result<Value, u32> {
     let secret = libindy::sss::libindy_recover_secret_from_shards(&shares_json)?;
 
-    println!("secret: {}", secret);
+    let out:Value = serde_json::from_str(&secret).unwrap();
+    let out = serde_json::to_string_pretty(&out).unwrap();
+    println!("secret: {}", out);
 
     serde_json::from_str(&secret).or(Err(error::INVALID_JSON.code_num))
 }

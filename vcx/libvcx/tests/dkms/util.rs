@@ -1,10 +1,12 @@
 extern crate serde_json;
+extern crate ansi_term;
 
 use super::actor::Actor;
 use std::env;
 use std::thread;
 use std::time;
 use serde_json::Value;
+//use self::ansi_term;
 
 use std::fs::File;
 use std::io::Write;
@@ -89,7 +91,7 @@ pub fn send_via_file(data: &str, path: &Path, _timeout: Option<u32>) -> Result<(
             break;
         }
 
-        should_print =should_print_wait_msg("Waiting for invite to be taken!",
+        should_print =should_print_wait_msg("waiting for invite to be taken",
                                             should_print,
                                             8);
         thread::sleep(time::Duration::from_secs(1));
@@ -111,7 +113,7 @@ pub fn receive_via_file(path: &Path, _timeout: Option<u32>) -> Result<String, ()
             return Ok(rtn);
         }
 
-        should_print =should_print_wait_msg("Waiting for invite!",
+        should_print =should_print_wait_msg("waiting for invite",
                                             should_print,
                                             8);
 
@@ -119,7 +121,7 @@ pub fn receive_via_file(path: &Path, _timeout: Option<u32>) -> Result<String, ()
     }
 }
 
-pub fn gate(msg: Option<&str>, use_gate: bool) {
+pub fn gate(actor: &Actor, msg: Option<&str>, use_gate: bool) {
     if !use_gate {
         return;
     }
@@ -130,7 +132,9 @@ pub fn gate(msg: Option<&str>, use_gate: bool) {
             print!("Press any enter to continue . . .")
         }
         Some(m) => {
-            print!("{}", m);
+            print!("<{}> {} [{}]:",ansi_term::Colour::Cyan.paint(actor.to_string()),
+                   m,
+                   ansi_term::Colour::Yellow.paint("Yes"));
         }
     }
     io::stdout().flush().unwrap();
