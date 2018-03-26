@@ -59,6 +59,8 @@ pub struct PublicKey {
     pub n: String,
     pub s: String,
     pub rms: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rpa: Option<String>,
     pub r: HashMap<String, String>,
     pub rctxt: String,
     pub z: String

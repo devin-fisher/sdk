@@ -25,6 +25,7 @@ extern {
                                   schemas_json: *const c_char,
                                   claim_defs_jsons: *const c_char,
                                   revoc_regs_json: *const c_char,
+                                  accumulators: *const c_char,
                                   cb: Option<extern fn(xcommand_handle: i32,
                                                        err: i32,
                                                        valid: bool)>) -> i32;
@@ -46,6 +47,8 @@ extern {
                                 requested_claims_json: *const c_char,
                                 schemas_json: *const c_char,
                                 master_secret_name: *const c_char,
+                                policy_address: *const c_char,
+                                agent_verkey: *const c_char,
                                 claim_defs_json: *const c_char,
                                 revoc_regs_json: *const c_char,
                                 cb: Option<extern fn(xcommand_handle: i32,
@@ -67,6 +70,7 @@ extern {
                                               claim_offer_json: *const c_char,
                                               claim_def_json: *const c_char,
                                               master_secret_name: *const c_char,
+                                              policy_address_name: *const c_char,
                                               cb: Option<extern fn(xcommand_handle: i32,
                                                                    err: i32,
                                                                    claim_req_json: *const c_char)>
@@ -84,7 +88,8 @@ pub fn libindy_verifier_verify_proof(proof_req_json: &str,
                                      proof_json: &str,
                                      schemas_json: &str,
                                      claim_defs_json: &str,
-                                     revoc_regs_json: &str)  -> Result<bool, u32>{
+                                     revoc_regs_json: &str,
+                                     accumulators: &str)  -> Result<bool, u32>{
 
     let rtn_obj = Return_I32_BOOL::new()?;
     let proof_req_json = CString::new(proof_req_json.to_string()).map_err(map_string_error)?;
@@ -92,6 +97,8 @@ pub fn libindy_verifier_verify_proof(proof_req_json: &str,
     let schemas_json = CString::new(schemas_json.to_string()).map_err(map_string_error)?;
     let claim_defs_json = CString::new(claim_defs_json.to_string()).map_err(map_string_error)?;
     let revoc_regs_json = CString::new(revoc_regs_json.to_string()).map_err(map_string_error)?;
+    let accumulators = CString::new(accumulators.to_string()).map_err(map_string_error)?;
+
     unsafe {
         indy_function_eval(
         indy_verifier_verify_proof(rtn_obj.command_handle,
@@ -100,6 +107,7 @@ pub fn libindy_verifier_verify_proof(proof_req_json: &str,
                                    schemas_json.as_ptr(),
                                    claim_defs_json.as_ptr(),
                                    revoc_regs_json.as_ptr(),
+                                   accumulators.as_ptr(),
                                    Some(rtn_obj.get_callback()))
         ).map_err(map_indy_error_code)?;
     }
@@ -161,6 +169,8 @@ pub fn libindy_prover_create_proof(wallet_handle: i32,
                                    requested_claims_json: &str,
                                    schemas_json: &str,
                                    master_secret_name: &str,
+                                   policy_address: &str,
+                                   agent_verkey: &str,
                                    claim_defs_json: &str,
                                    revoc_regs_json: Option<&str>) -> Result<String, u32> {
     let rtn_obj = Return_I32_STR::new()?;
@@ -169,6 +179,8 @@ pub fn libindy_prover_create_proof(wallet_handle: i32,
     let requested_claims_json = CString::new(requested_claims_json).map_err(map_string_error)?;
     let schemas_json = CString::new(schemas_json).map_err(map_string_error)?;
     let master_secret_name = CString::new(master_secret_name).map_err(map_string_error)?;
+    let policy_address = CString::new(policy_address).map_err(map_string_error)?;
+    let agent_verkey = CString::new(agent_verkey).map_err(map_string_error)?;
     let claim_defs_json = CString::new(claim_defs_json).map_err(map_string_error)?;
     let revoc_regs_json = match revoc_regs_json {
         Some(s) => Some(CString::new(s).map_err(map_string_error)?),
@@ -183,6 +195,8 @@ pub fn libindy_prover_create_proof(wallet_handle: i32,
                                      requested_claims_json.as_ptr(),
                                      schemas_json.as_ptr(),
                                      master_secret_name.as_ptr(),
+                                     policy_address.as_ptr(),
+                                     agent_verkey.as_ptr(),
                                      claim_defs_json.as_ptr(),
                                      option_cstring_as_ptn(&revoc_regs_json),
                                      Some(rtn_obj.get_callback()))
@@ -215,7 +229,8 @@ pub fn libindy_prover_create_and_store_claim_req(wallet_handle: i32,
                                                  prover_did: &str,
                                                  claim_offer_json: &str,
                                                  claim_def_json: &str,
-                                                 master_secret_name: &str) -> Result<String, u32>
+                                                 master_secret_name: &str,
+                                                 policy_address: &str) -> Result<String, u32>
 {
 
     let rtn_obj = Return_I32_STR::new()?;
@@ -224,6 +239,7 @@ pub fn libindy_prover_create_and_store_claim_req(wallet_handle: i32,
     let claim_offer_json = CString::new(claim_offer_json).map_err(map_string_error)?;
     let claim_def_json = CString::new(claim_def_json).map_err(map_string_error)?;
     let master_secret_name = CString::new(master_secret_name).map_err(map_string_error)?;
+    let policy_address = CString::new(policy_address).map_err(map_string_error)?;
 
     unsafe {
         indy_function_eval(
@@ -233,6 +249,7 @@ pub fn libindy_prover_create_and_store_claim_req(wallet_handle: i32,
                                                    claim_offer_json.as_ptr(),
                                                    claim_def_json.as_ptr(),
                                                    master_secret_name.as_ptr(),
+                                                   policy_address.as_ptr(),
                                                    Some(rtn_obj.get_callback()))
         ).map_err(map_indy_error_code)?;
     }
@@ -326,7 +343,8 @@ mod tests {
                                                    INDY_PROOF_JSON,
                                                    INDY_SCHEMAS_JSON,
                                                    INDY_CLAIM_DEFS_JSON,
-                                                   INDY_REVOC_REGS_JSON);
+                                                   INDY_REVOC_REGS_JSON,
+                                                   "");
         delete_wallet("wallet_simple").unwrap();
         assert!(result.is_ok());
         println!("{}", result.unwrap());

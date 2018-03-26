@@ -15,9 +15,12 @@ use claim_def::{ RetrieveClaimDef, ClaimDefCommon };
 use schema::LedgerSchema;
 
 use utils::libindy::anoncreds;
+use utils::libindy::ledger;
 use utils::libindy::wallet;
+use utils::libindy::pool;
 use utils::libindy::SigTypes;
 use utils::libindy::crypto;
+use utils::libindy::authz;
 
 use utils::option_util::expect_ok_or;
 
@@ -227,6 +230,53 @@ impl DisclosedProof {
 
     }
 
+    fn _update_witness(&self) -> Result<(), u32> {
+
+        let w_h = wallet::get_wallet_handle();
+        let p_h = pool::get_pool_handle()?;
+        let address = settings::get_config_value(settings::CONFIG_IDENTITY_POLICY_ADDRESS)?;
+        let verkey = settings::get_config_value(settings::CONFIG_AGENT_POLICY_VERKEY)?;
+        //get commitment for verkey
+        let wallet_policy = authz::libindy_get_policy(w_h, &address)?;
+        let comm = authz::double_commitment(&wallet_policy, &verkey)?;
+
+        let update_witness_txn = ledger::libindy_build_get_agent_authz_accum_witness_request(&verkey,
+                                                                                             "accum_1",
+                                                                                             &comm)?;
+        let update_witness_txn_resp = ledger::libindy_submit_request(p_h, update_witness_txn)?;
+
+//        println!("update witness info: \n{}", update_witness_txn_resp);
+
+        let data:Value = serde_json::from_str(&update_witness_txn_resp).unwrap();
+        let data = &data["result"]["data"];
+//        println!("Accum: {:?}", &data[0]);
+        let inital_witness = &data[1];
+        let witness_array = &data[2];
+
+        if inital_witness.is_null() || witness_array.is_null() {
+            error!("Unable to update witness, did not get valid data from ledger");
+            return Err(1035 as u32);
+        }
+
+//        let inital_witness = serde_json::to_string_pretty(&inital_witness).unwrap();
+        let inital_witness = inital_witness.as_str().unwrap().to_owned();
+        let witness_array = serde_json::to_string_pretty(&witness_array).unwrap();
+
+//        println!("init: {}", inital_witness);
+//        println!("array: {}", witness_array);
+
+        let new_witness = authz::libindy_generate_witness(&inital_witness, &witness_array)?;
+
+//        println!("new wit: {}", new_witness);
+
+        authz::libindy_update_agent_witness(w_h, &address, &verkey, &new_witness)?;
+
+//        println!("Policy::\n{}", update_witness_txn_resp);
+
+
+        Ok(())
+    }
+
     fn _build_proof(&self) -> Result<ProofMessage, u32> {
 
         let wallet_h = wallet::get_wallet_handle();
@@ -253,16 +303,28 @@ impl DisclosedProof {
         let claim_defs_json = self._find_claim_def(&claims_identifiers)?;
         let revoc_regs_json = Some("{}");
 
+        let address = settings::get_config_value(settings::CONFIG_IDENTITY_POLICY_ADDRESS)?;
+        let agent_verkey = settings::get_config_value(settings::CONFIG_AGENT_POLICY_VERKEY)?;
+
+        self._update_witness()?;
+
         let proof = anoncreds::libindy_prover_create_proof(wallet_h,
                                                           &proof_req_data_json,
                                                            &requested_claims,
                                                           &schemas,
                                                           master_secret,
+                                                          &address,
+                                                          &agent_verkey,
                                                           &claim_defs_json,
                                                           revoc_regs_json)?;
 
-        let proof: ProofMessage = serde_json::from_str(&proof)
-            .or(Err(error::UNKNOWN_LIBINDY_ERROR.code_num))?;
+//        println!("Proof: \n{}", proof);
+        let proof: ProofMessage = serde_json::from_str(&proof).map_err(|e|{
+            error!("{:?}", e);
+            error::INVALID_JSON.code_num
+        })?;
+
+//        println!("DONE CREATING PROOF");
 
         Ok(proof)
     }

@@ -86,6 +86,15 @@ extern {
                                                                      err: i32,
                                                                      request_json: *const c_char)>
     ) -> i32;
+
+    fn indy_build_get_agent_authz_accum_witness_request(command_handle: i32,
+                                                        submitter: *const c_char,
+                                                        accum_id: *const c_char,
+                                                        comm: *const c_char,
+                                                        cb: Option<extern fn(xcommand_handle: i32,
+                                                                             err: i32,
+                                                                             request_json: *const c_char)>
+    ) -> i32;
 }
 
 pub fn libindy_sign_and_submit_request(pool_handle: i32,
@@ -280,6 +289,28 @@ pub fn libindy_build_get_agent_authz_accum_request(submitter: &str,
                                                      submitter.as_ptr(),
                                                      accum_id.as_ptr(),
                                                      Some(rtn_obj.get_callback()))
+        ).map_err(map_indy_error_code)?;
+    }
+
+    rtn_obj.receive(TimeoutUtils::some_medium()).and_then(check_str)
+}
+
+pub fn libindy_build_get_agent_authz_accum_witness_request(submitter: &str,
+                                                   accum_id: &str,
+                                                   comm: &str) -> Result<String, u32>
+{
+    let rtn_obj = Return_I32_STR::new()?;
+    let submitter = CString::new(submitter).map_err(map_string_error)?;
+    let accum_id = CString::new(accum_id).map_err(map_string_error)?;
+    let comm = CString::new(comm).map_err(map_string_error)?;
+
+    unsafe {
+        indy_function_eval(
+            indy_build_get_agent_authz_accum_witness_request(rtn_obj.command_handle,
+                                                             submitter.as_ptr(),
+                                                             accum_id.as_ptr(),
+                                                             comm.as_ptr(),
+                                                             Some(rtn_obj.get_callback()))
         ).map_err(map_indy_error_code)?;
     }
 

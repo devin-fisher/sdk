@@ -47,6 +47,14 @@ extern {
                                             err: i32,
                                             policy_json: *const c_char)>
     ) -> i32;
+
+    fn indy_generate_witness(command_handle: i32,
+                             initial_witness: *const c_char,
+                             witness_array: *const c_char,
+                             cb: Option<extern fn(xcommand_handle: i32,
+                                                  err: i32,
+                                                  new_witness: *const c_char)>
+    ) -> i32;
 }
 
 pub enum Permission {
@@ -55,6 +63,18 @@ pub enum Permission {
     Prove = 2,
     ProveGrant = 4,
     ProveRevoke = 8,
+}
+
+pub fn double_commitment(policy: &str, verkey: &str) -> Result<String, u32>{
+    let policy: Value = serde_json::from_str(&policy).unwrap();
+    let rtn = policy["agents"][verkey]["double_commitment"]
+            .as_str().ok_or(INVALID_JSON.code_num).map_err(|e|
+            {
+                error!("Unable to get commitment from policy stored in the wallet");
+                e
+            }
+    )?.to_string();
+    Ok(rtn)
 }
 
 pub fn update_verkey_in_policy(wallet_h: i32, pool_h: i32, admin_vk: &str, new_vk: &str, address: &str, auth: Permission, with_comm: bool) -> Result<(), u32> {
@@ -67,14 +87,9 @@ pub fn update_verkey_in_policy(wallet_h: i32, pool_h: i32, admin_vk: &str, new_v
                                             with_comm)?;
 
             let updated_policy = libindy_get_policy(wallet_h,
-                                                    address).unwrap();
-            let updated_policy: Value = serde_json::from_str(&updated_policy).unwrap();
+                                                    address)?;
 
-            Some(updated_policy["agents"][&new_vk]["double_commitment"]
-            .as_str().ok_or(INVALID_JSON.code_num).map_err(|e|{
-                error!("Unable to get commitment from policy stored in the wallet");
-                e
-            })?.to_string())
+            Some(double_commitment(&updated_policy, new_vk)?)
 //            use utils::dkms_constants::get_prime;
 //            Some(get_prime())
         },
@@ -183,6 +198,25 @@ pub fn libindy_get_policy(wallet_handle: i32,
             indy_get_policy(rtn_obj.command_handle,
                             wallet_handle,
                             policy_address.as_ptr(),
+                            Some(rtn_obj.get_callback()))
+        ).map_err(map_indy_error_code)?;
+    }
+
+    rtn_obj.receive(TimeoutUtils::some_long()).and_then(check_str)
+}
+
+pub fn libindy_generate_witness(initial_witness: &str,
+                          witness_array: &str)  -> Result<String, u32> {
+
+    let rtn_obj = Return_I32_STR::new()?;
+    let initial_witness = CString::new(initial_witness).map_err(map_string_error)?;
+    let witness_array = CString::new(witness_array).map_err(map_string_error)?;
+
+    unsafe {
+        indy_function_eval(
+            indy_generate_witness(rtn_obj.command_handle,
+                            initial_witness.as_ptr(),
+                            witness_array.as_ptr(),
                             Some(rtn_obj.get_callback()))
         ).map_err(map_indy_error_code)?;
     }

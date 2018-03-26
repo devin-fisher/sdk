@@ -60,7 +60,7 @@ const INVITE_RECOVERY_CUNION_ALICE_PATH: &'static str = "/tmp/recovery-alice-cun
 
 const POOL_NAME: &'static str = "dkms_pool";
 
-const USE_GATES: bool = true;
+const USE_GATES: bool = false;
 
 lazy_static! {
     static ref DB: Mutex<HashMap<String, String>> = Default::default();
@@ -417,6 +417,9 @@ fn chapter_2_demo(actor: &Actor) {
             api_caller::u32_u32_r_u32(proof_h,
                                       bob_h,
                                       vcx::api::disclosed_proof::vcx_disclosed_proof_send_proof).unwrap();
+
+            println!("Proof sent successfully");
+
 
             await_state("Proof",
                         proof_h,
@@ -845,7 +848,7 @@ fn chapter_5_demo(actor: &Actor, _dir_path: &Path) {
             api_caller::str_r_check(&shares_handles,
                                     vcx::api::backup::vcx_backup_do_restore).unwrap();
 
-            println!("Alice has restored here Agent!");
+            println!("Alice has restored her Agent!");
         }
         &Actor::Bob => {
             print_chapter("CHAPTER FIVE", None);
@@ -949,7 +952,7 @@ fn refresh_policy(w_h: i32, p_h: i32, verkey: &str, address: &str) -> Result<(),
     let policy: Value = _get_current_policy(w_h, p_h, verkey, address)?;
 
     println!("\nCleaning Policy for demo");
-    println!("Dirty Entries:");
+//    println!("Dirty Entries:");
 
     let data = policy["result"]["data"].as_array().unwrap();
 
@@ -963,7 +966,7 @@ fn refresh_policy(w_h: i32, p_h: i32, verkey: &str, address: &str) -> Result<(),
             continue;
         }
 
-        println!("{}", serde_json::to_string_pretty(&auth).unwrap());
+//        println!("{}", serde_json::to_string_pretty(&auth).unwrap());
 
         let update_txn = libindy::ledger::libindy_build_agent_authz_request(
             verkey,
@@ -972,6 +975,8 @@ fn refresh_policy(w_h: i32, p_h: i32, verkey: &str, address: &str) -> Result<(),
             0,
             None
         ).unwrap();
+
+//        println!("{}", update_txn);
 
         let _result = libindy::ledger::libindy_sign_and_submit_request(p_h,
                                                                       w_h,

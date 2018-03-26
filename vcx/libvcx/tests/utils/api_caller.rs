@@ -145,7 +145,7 @@ pub fn u32_r_u32(arg1: u32, func: fn_u32_r_u32_u32) -> Result<u32, u32> {
         return Err(rc);
     }
 
-    rtn_obj.receive(TimeoutUtils::some_medium())
+    rtn_obj.receive(TimeoutUtils::some_long())
 }
 
 pub fn str_u32_str_str_str_r_u32(arg1: &str, arg2: u32, arg3: &str, arg4: &str, arg5: &str, func: fn_str_u32_str_str_str_r_u32_u32) -> Result<u32, u32> {
@@ -209,7 +209,7 @@ pub fn u32_u32_r_u32(arg1: u32, arg2: u32, func: fn_u32_u32_r_u32) -> Result<(),
         return Err(rc);
     }
 
-    rtn_obj.receive(TimeoutUtils::some_medium())
+    rtn_obj.receive(TimeoutUtils::some_long())
 }
 
 pub fn u32_u32_u32_r_u32(arg1: u32, arg2: u32, arg3: u32, func: fn_u32_u32_u32_r_u32) -> Result<(), u32> {
@@ -225,7 +225,7 @@ pub fn u32_u32_u32_r_u32(arg1: u32, arg2: u32, arg3: u32, func: fn_u32_u32_u32_r
         return Err(rc);
     }
 
-    rtn_obj.receive(TimeoutUtils::some_medium())
+    rtn_obj.receive(TimeoutUtils::some_long())
 }
 
 pub fn u32_r_u32_str(arg1: u32, func: fn_u32_r_u32_str) -> Result<Option<String>, u32> {
@@ -240,7 +240,7 @@ pub fn u32_r_u32_str(arg1: u32, func: fn_u32_r_u32_str) -> Result<Option<String>
         return Err(rc);
     }
 
-    rtn_obj.receive(TimeoutUtils::some_medium())
+    rtn_obj.receive(TimeoutUtils::some_long())
 }
 
 
@@ -256,5 +256,5 @@ pub fn u32_u32_r_u32_str(arg1: u32, arg2: u32, func: fn_u32_u32_r_u32_u32_str) -
         return Err(rc);
     }
 
-    rtn_obj.receive(TimeoutUtils::some_medium())
+    rtn_obj.receive(TimeoutUtils::some_long())
 }

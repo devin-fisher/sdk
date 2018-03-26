@@ -110,12 +110,14 @@ impl Claim {
 
         let claim_offer = serde_json::to_string(claim_offer).or(Err(10 as u32))?;
 
+        let address = settings::get_config_value(settings::CONFIG_IDENTITY_POLICY_ADDRESS)?;
 
         let req = libindy_prover_create_and_store_claim_req(wallet_h,
                                                             &prover_did,
                                                             &claim_offer,
                                                             &claim_def,
-                                                            master_secret)?;
+                                                            master_secret,
+                                                            &address)?;
 
         let mut  req : Value = serde_json::from_str(&req)
             .or_else(|e|{

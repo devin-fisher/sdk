@@ -20,9 +20,12 @@ use utils::error;
 use utils::constants::*;
 use utils::libindy::SigTypes;
 use utils::libindy::anoncreds::libindy_verifier_verify_proof;
+use utils::libindy;
 use claim_def::{ RetrieveClaimDef, ClaimDefCommon, ClaimDefinition };
 use schema::{ LedgerSchema, SchemaTransaction };
 use proof_compliance::{ proof_compliance };
+
+use serde_json::Value;
 
 lazy_static! {
     static ref PROOF_MAP: Mutex<HashMap<u32, Box<Proof>>> = Default::default();
@@ -66,12 +69,28 @@ impl Proof {
                            revoc_regs_json: &str) -> Result<u32, u32> {
         if settings::test_indy_mode_enabled() {return Ok(error::SUCCESS.code_num);}
 
-        info!("starting libindy proof verification");
+        let p_h = libindy::pool::get_pool_handle()?;
+        let get_accum_txn = libindy::ledger::libindy_build_get_agent_authz_accum_request("GGBDg1j8bsKmr4h5T9XqYf",
+                                                                                         "accum_1")?;
+        let txn_res = libindy::ledger::libindy_submit_request(p_h, get_accum_txn)?;
+        let result: Value = serde_json::from_str(&txn_res).unwrap();
+        let accum = result["result"]["data"]
+            .as_str().ok_or(error::INVALID_JSON.code_num).map_err(|e|
+            {
+                error!("Unable to get accumulator from the ledger");
+                e
+            }
+        )?.to_string();
+//        println!("Accum; {}", accum);
+//        println!("ClaimDEF: \n{}", claim_defs_json);
+
+//        let valid = true;
         let valid = match libindy_verifier_verify_proof(proof_req_json,
-                                                         proof_json,
-                                                         schemas_json,
-                                                         claim_defs_json,
-                                                         revoc_regs_json) {
+                                                        proof_json,
+                                                        schemas_json,
+                                                        claim_defs_json,
+                                                        revoc_regs_json,
+                                                        &accum) {
             Ok(x) => x,
             Err(x) => {
                 error!("Error: {}, Proof wasn't valid {}", x, self.handle);

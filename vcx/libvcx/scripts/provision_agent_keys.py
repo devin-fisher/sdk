@@ -13,7 +13,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("WALLET_NAME")
     parser.add_argument("AGENCY_URL")
-    parser.add_argument("WALLET_KEY")
+    #parser.add_argument("WALLET_KEY")
     parser.add_argument("--agent-seed", help="optional seed used to create enterprise->agent DID/VK")
     parser.add_argument("--enterprise-seed", help="optional seed used to create enterprise DID/VK")
     parser.add_argument("--verbose", action="store_true")
@@ -63,7 +63,7 @@ def register_agent(args):
         'agency_did':agency_info['DID'],
         'agency_verkey':agency_info['verKey'],
         'wallet_name':args.WALLET_NAME,
-        'wallet_key':args.WALLET_KEY,
+        #'wallet_key':args.WALLET_KEY,
         'agent_seed':args.agent_seed,
         'enterprise_seed':args.enterprise_seed})
 

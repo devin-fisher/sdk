@@ -51,7 +51,7 @@ pub fn config_info(actor: &Actor) -> ConfigInfo {
                 enterprise_verkey: String::from("EUFDEw2ZoJnJh3Ni7nW7de2F9cGH8NAU9ixkAcj4Xdn7"),
                 agent_pairwise_did: String::from("N1WbZTgYjDXsymQxZtMigF"),
                 agent_pairwise_verkey: String::from("CT8Wh28YEeBQRS1YFW4W6T3ujrVDgZAAL9xu5VjPAwsd"),
-                identity_policy_address: String::from("175"),
+                identity_policy_address: String::from("299"),
 //                agent_policy_verkey: String::from("F5xT9jRfsbm3GQLcLB1SCP539debmD9mN95VoYjYF4HX"),
                 recovery_verkey: String::from("CXEbaQLPZoiLr17tKd6KkHcGjhzk8dUr4JEx82fdvN8Z"),
             }
@@ -168,8 +168,8 @@ pub fn wallet_entries(actor: &Actor) -> &[[&str;3]] {
                     "2018-03-08 23:37:05"
                 ],
                 [
-                    "authz_address::175",
-                    r#"{"address":"175","agents":{}}"#,
+                    "authz_address::299",
+                    r#"{"address":"299","agents":{}}"#,
                     "2018-03-08 23:37:05"
                 ],
             ]

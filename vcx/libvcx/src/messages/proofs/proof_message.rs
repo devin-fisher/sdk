@@ -18,6 +18,7 @@ pub struct ProofMessage{
     pub proofs: HashMap<String, Proofs>,
     pub aggregated_proof: AggregatedProof,
     pub requested_proof: RequestedProof,
+    pub authz_proof: Value,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -60,7 +61,7 @@ pub struct EqProof{
     e: String,
     v: String,
     m: HashMap<String, String>,
-    m1: String,
+    m1: Option<String>,
     m2: String,
 }
 
@@ -85,6 +86,7 @@ impl ProofMessage {
             proofs: HashMap::new(),
             aggregated_proof: AggregatedProof::new(),
             requested_proof: RequestedProof::new(),
+            authz_proof: Value::Null
         }
     }
 
@@ -221,7 +223,7 @@ impl EqProof {
             e: String::new(),
             v: String::new(),
             m: HashMap::new(),
-            m1: String::new(),
+            m1: Some(String::new()),
             m2: String::new(),
         }
     }
