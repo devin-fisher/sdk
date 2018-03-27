@@ -247,7 +247,7 @@ fn chapter_1_demo(actor: &Actor) {
             let cunion_h = receive_conn(actor, "CUnion", invite_path).expect("Should connect to CUnion");
 
 
-            story("Alice agrees to receive a credential from CUnion");
+            story("Alice agrees to receive a credential from CUnion.");
             println!("looking for credential offers");
             let offers = await_message(cunion_h,
                                        "CLAIM_OFFER",
@@ -440,10 +440,11 @@ fn chapter_2_demo(actor: &Actor) {
             println!("enter Bob");
             gate(actor, None, USE_GATES);
 
-            story("Bob wants business card info from Alice.");
             let invite_path = Path::new(INVITE_BOB_ALICE_PATH);
             let alice_h = receive_conn(actor, "Alice", invite_path).expect("Should connect to Alice");
 
+
+            story("Bob wants business card info from Alice.");
             let requesting_proof = json!([
                 {
                   "name":"name",

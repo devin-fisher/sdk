@@ -265,8 +265,6 @@ pub fn new_messages(connection_handle: u32, match_name: Option<&str>) -> Result<
 
             let req = extract_json_payload(&msg_data)?;
 
-            println!("{:?}", req);
-
             let mut req: RequestShareMsg = serde_json::from_str(&req)
                 .or(Err(error::INVALID_JSON.code_num))?;
 
